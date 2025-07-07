@@ -7,12 +7,11 @@ from flask import (
 from flask_mail import Mail, Message
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 
-print("DEBUG: app.py is being loaded!") # <--- ADD THIS LINE HERE
+print("DEBUG: app.py is being loaded!")
 
 load_dotenv() 
 
-app = Flask(__name__)
-
+# --- Removed duplicate Flask app initialization ---
 app = Flask(__name__)
 
 # --- NEW: Explicit Logging Configuration ---
@@ -30,12 +29,7 @@ if not app.logger.handlers:
     app.logger.addHandler(handler)
 # --- END NEW Logging Configuration ---
 
-app.config.update(
-    MAIL_SERVER="smtp.gmail.com",
-    # ... rest of your config ...
-)
-
-# --- Configuration ---
+# --- App Configuration ---
 app.config.update(
     MAIL_SERVER="smtp.gmail.com",
     MAIL_PORT=587,
@@ -47,30 +41,47 @@ app.config.update(
 app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev-secret")
 
 # --- App Initialization ---
-# --- Configuration ---
-# ... (rest of your app.config.update) ...
-
-# --- App Initialization ---
 serializer = URLSafeTimedSerializer(app.config["SECRET_KEY"])
 TOKEN_EXPIRY_SECONDS = 15 * 60
 mail = Mail(app)
 
-# --- MODIFIED PATHS FOR WINDOWS LOCAL DEVELOPMENT ---
-RECDIR = "E:\\GrabScreen_Recordings" # <--- MAKE SURE THIS PATH EXISTS AND IS ACCESSIBLE
-MP4_DIR = os.path.join(RECDIR, "mp4_converted") 
+# --- Dynamic Path Configuration based on OS ---
+IS_WINDOWS = os.name == 'nt' # 'nt' for Windows, 'posix' for Linux/macOS
 
-# Path to your FFmpeg directory's 'bin' folder where ffmpeg.exe is located
-# !!! REPLACE THIS WITH THE EXACT PATH YOU VERIFIED IN FILE EXPLORER !!!
-FFMPEG_DIR = "C:\\ffmpeg-full\\bin" # <--- E.g., "C:\\path\\to\\your\\ffmpeg-version\\bin"
-FFMPEG_PATH = os.path.join(FFMPEG_DIR, "ffmpeg.exe") # Crucially, add .exe for Windows!
+if IS_WINDOWS:
+    # --- Paths for Windows Local Development ---
+    # IMPORTANT: VERIFY THESE PATHS ON YOUR MACHINE!
+    # RECDIR should be where you want recordings to be saved locally
+    RECDIR = "E:\\GrabScreen_Recordings" 
+    # FFMPEG_DIR should be the path to the 'bin' folder containing ffmpeg.exe
+    FFMPEG_DIR = "C:\\ffmpeg-full\\bin" # e.g., "C:\\ffmpeg-7.0.2-full_build\\bin"
+    FFMPEG_PATH = os.path.join(FFMPEG_DIR, "ffmpeg.exe") # Add .exe for Windows
+else:
+    # --- Paths for Linux/Render Deployment ---
+    # Render's persistent disk path
+    RECDIR = "/mnt/recordings" 
+    # On Render, FFmpeg is usually installed system-wide or in /usr/bin/
+    # If it's in PATH, just "ffmpeg" works. Otherwise, specify full path.
+    FFMPEG_PATH = "ffmpeg" # Assumes 'ffmpeg' is in the system's PATH
+    # If you put ffmpeg static build into /mnt/recordings, use this:
+    # FFMPEG_PATH = "/mnt/recordings/ffmpeg-7.0.2-amd64-static/ffmpeg"
+    # No FFMPEG_DIR variable needed if FFMPEG_PATH is a direct executable name or full path.
 
-# ...
-# The check below helps confirm the path is correct:
-if not os.path.exists(FFMPEG_PATH):
-    app.logger.error(f"FATAL ERROR: FFmpeg executable not found at '{FFMPEG_PATH}'. Please verify the path and installation steps.")
-    app.logger.error(f"FATAL ERROR: FFmpeg executable not found at '{FFMPEG_PATH}'. Please verify the path and installation steps.")
+MP4_DIR = os.path.join(RECDIR, "mp4_converted")
+
+# Ensure directories exist
 os.makedirs(RECDIR, exist_ok=True)
-os.makedirs(MP4_DIR, exist_ok=True) # Ensure MP4 directory exists
+os.makedirs(MP4_DIR, exist_ok=True) 
+
+# --- FFmpeg Path Verification (for better debugging) ---
+# This check is more effective for absolute paths.
+# If FFMPEG_PATH is just "ffmpeg", os.path.exists will return False, which is fine
+# because subprocess.run will search the system's PATH.
+if os.path.isabs(FFMPEG_PATH) and not os.path.exists(FFMPEG_PATH):
+    app.logger.error(f"FATAL ERROR: FFmpeg executable not found at '{FFMPEG_PATH}'. Please verify the path and installation steps for this environment.")
+elif not os.path.isabs(FFMPEG_PATH):
+    app.logger.info(f"FFmpeg path '{FFMPEG_PATH}' is relative/assumed in PATH. Not performing direct file existence check.")
+
 
 LINKS_FILE = "public_links.json"
 SESSIONS_FILE = "user_sessions.json"
@@ -82,6 +93,7 @@ def load_json(file_path):
             try:
                 return json.load(f)
             except json.JSONDecodeError:
+                app.logger.warning(f"Corrupt or empty JSON file: {file_path}. Returning empty dict.")
                 return {} # Return empty dict if file is corrupt or empty
     return {}
 
@@ -112,6 +124,7 @@ def upload():
     try:
         video_file.save(save_path)
     except Exception as e:
+        app.logger.error(f"Failed to save uploaded video file: {e}")
         return jsonify({"status": "fail", "error": str(e)}), 500
 
     token = request.cookies.get("magic_token")
@@ -178,14 +191,23 @@ def clip(orig):
         "-y", out_path
     ]
     try:
-        subprocess.run(cmd, check=True, capture_output=True, text=True)
+        # Use shell=True on Windows if FFMPEG_PATH is not a full path or in PATH
+        # For cross-platform, safer to always provide full path and not use shell=True
+        subprocess.run(cmd, check=True, capture_output=True, text=True) 
         token = request.cookies.get("magic_token")
         if token and token in user_sessions:
             user_sessions[token].append(clip_name)
             save_json(user_sessions, SESSIONS_FILE)
         return jsonify({"status": "ok", "clip": clip_name})
     except subprocess.CalledProcessError as e:
+        app.logger.error(f"FFmpeg clipping failed for {orig}: {e.stderr}")
         return jsonify({"status": "fail", "error": e.stderr}), 500
+    except FileNotFoundError:
+        app.logger.error(f"FFmpeg command not found during clip operation. Path used: {FFMPEG_PATH}")
+        return jsonify({"status": "fail", "error": "Server error: FFmpeg not found for video clipping."}), 500
+    except Exception as e:
+        app.logger.error(f"Unexpected error during clipping for {orig}: {e}")
+        return jsonify({"status": "fail", "error": f"An unexpected error occurred during clipping: {str(e)}"}), 500
 
 @app.route("/recordings/<fname>", endpoint="get_recording_webm")
 def recordings(fname):
@@ -197,10 +219,6 @@ def download(fname):
     # This is the default WEBM download
     return send_from_directory(RECDIR, fname, as_attachment=True, mimetype="video/webm")
 
-
-
-# NEW ROUTE: Download as MP4
-# NEW ROUTE: Download as MP4
 @app.route("/download/mp4/<filename>", endpoint="download_mp4")
 def download_mp4(filename):
     app.logger.info(f"DEBUG: Entering download_mp4 function for {filename}")
@@ -210,56 +228,45 @@ def download_mp4(filename):
 
     webm_path = os.path.join(RECDIR, filename)
     if not os.path.exists(webm_path):
-        app.logger.error(f"❌ Original WEBM file not found at path: {webm_path}") # Added logging for this case
+        app.logger.error(f"❌ Original WEBM file not found at path: {webm_path}")
         return jsonify({"status": "fail", "error": "Original WEBM file not found"}), 404
 
     mp4_filename = filename.replace(".webm", ".mp4")
     mp4_path = os.path.join(MP4_DIR, mp4_filename)
 
-
-    # Check if MP4 already exists
+    # Check if MP4 already exists and is not empty
     if os.path.exists(mp4_path) and os.path.getsize(mp4_path) > 0:
         app.logger.info(f"Serving existing MP4: {mp4_filename}")
         return send_from_directory(MP4_DIR, mp4_filename, as_attachment=True, mimetype="video/mp4")
 
-    # If it doesn't exist or is empty, attempt conversion
-        # If it doesn't exist or is empty, attempt conversion
     app.logger.info(f"Attempting to convert {filename} to MP4...")
 
     ffmpeg_cmd = [
-    FFMPEG_PATH,
-    "-y",                 # Overwrite output file without asking
-    "-i", webm_path,      # Input WEBM file
-    "-r", "30",           # <--- ADD THIS LINE: Force output framerate to 30 FPS
-    "-c:v", "libx264",
-    "-preset", "ultrafast",
-    "-crf", "28",
-    "-c:a", "aac",
-    "-b:a", "64k",
-    mp4_path,
-]
+        FFMPEG_PATH,
+        "-y",                 # Overwrite output file without asking
+        "-i", webm_path,      # Input WEBM file
+        "-r", "30",           # Force output framerate to 30 FPS
+        "-c:v", "libx264",
+        "-preset", "ultrafast", # Faster encoding, lower quality/larger file for quick conversions
+        "-crf", "28",         # Constant Rate Factor (0-51), higher means lower quality/smaller file
+        "-c:a", "aac",
+        "-b:a", "64k",
+        mp4_path,
+    ]
 
-    # --- DEBUGGING LOGGING (keep these) ---
     app.logger.info(f"DEBUG: FFmpeg command list: {ffmpeg_cmd}")
+    # os.path.exists only works for absolute paths. If FFMPEG_PATH is "ffmpeg", this is False.
+    # This line is for debugging the *path* itself, not whether 'ffmpeg' is in system PATH.
     app.logger.info(f"DEBUG: Checking FFMPEG_PATH existence: {os.path.exists(FFMPEG_PATH)}")
-    # --- END NEW DEBUGGING LOGGING ---
 
     try:
-        # --- MODIFIED: Added timeout=60 (this part was already there from last update) ---
-        result = subprocess.run(ffmpeg_cmd, check=True, capture_output=True, text=True, timeout=60)
+        result = subprocess.run(ffmpeg_cmd, check=True, capture_output=True, text=True, timeout=120) # Increased timeout to 120s
 
-        # ... rest of the try-except blocks are the same ...
-
-        # --- DEBUGGING LOGGING ---
         app.logger.info(f"DEBUG: subprocess.run completed. Return code: {result.returncode}")
-        # --- END NEW DEBUGGING LOGGING ---
-
-        # Log FFmpeg's standard output and error (even on success, for debugging)
         app.logger.info(f"✅ FFmpeg stdout for {filename}:\n{result.stdout}")
         if result.stderr:
             app.logger.warning(f"⚠️ FFmpeg stderr (might be warnings) for {filename}:\n{result.stderr}")
 
-        # ✅ Check for empty MP4 file AFTER conversion
         if not os.path.exists(mp4_path) or os.path.getsize(mp4_path) == 0:
             app.logger.error(f"❌ Converted MP4 is 0 bytes or missing after conversion: {mp4_path}")
             return jsonify({
@@ -267,30 +274,22 @@ def download_mp4(filename):
                 "error": "Converted video is empty or corrupt. Try re-uploading or trimming the recording."
             }), 500
 
-        # Send the newly converted MP4 file for download
         app.logger.info(f"✅ Successfully converted and serving new MP4: {mp4_filename}")
         return send_from_directory(MP4_DIR, mp4_filename, as_attachment=True, mimetype="video/mp4")
 
-    # --- NEW: Added TimeoutExpired Exception Handling ---
     except subprocess.TimeoutExpired as e:
-        # This block will catch if FFmpeg takes too long to respond
         app.logger.error(f"❌ FFmpeg conversion timed out for {filename} after {e.timeout} seconds. Stderr from partial output: {e.stderr}")
         return jsonify({"status": "fail", "error": f"Video conversion timed out ({e.timeout}s). Try a shorter clip or simpler conversion. Server might be under heavy load or resource constraints."}), 500
-    # --- END NEW TimeoutExpired Exception Handling ---
-
     except subprocess.CalledProcessError as e:
-        # If FFmpeg returns a non-zero exit code
         app.logger.error(f"❌ FFmpeg conversion failed for {filename} with error code {e.returncode}:\n{e.stderr}")
         return jsonify({"status": "fail", "error": f"Video conversion failed: {e.stderr}"}), 500
     except FileNotFoundError:
-        # This specifically catches if 'ffmpeg' command itself is not found
-        app.logger.error(f"❌ FFmpeg command not found. Ensure FFmpeg is installed on the server at {FFMPEG_PATH}.")
+        # This specifically catches if 'ffmpeg' command itself is not found in PATH or at the absolute path
+        app.logger.error(f"❌ FFmpeg command not found. Ensure FFmpeg is installed on the server at '{FFMPEG_PATH}' or is in the system's PATH.")
         return jsonify({"status": "fail", "error": "Server error: FFmpeg not found for video conversion."}), 500
     except Exception as e:
-        # Catch any other unexpected errors during the process
         app.logger.error(f"❌ Unexpected error during conversion for {filename}: {e}")
         return jsonify({"status": "fail", "error": f"An unexpected error occurred during conversion: {str(e)}"}), 500
-
 
 @app.route("/link/secure/<fname>", endpoint="generate_secure_link")
 def generate_secure_link(fname):
@@ -350,7 +349,6 @@ def serve_public_file(token):
         return "❌ Invalid or expired link.", 404
     return send_from_directory(RECDIR, fname)
 
-
 @app.route("/send_email", methods=["POST"], endpoint="send_email_route")
 def send_email():
     data = request.get_json()
@@ -367,14 +365,12 @@ def send_email():
         mail.send(msg)
         return jsonify({"status": "ok"})
     except Exception as e:
-        # Provide a more generic error to the user for security
         app.logger.error(f"Mail sending failed: {e}")
         return jsonify({"status": "fail", "error": "Could not send the email."}), 500
 
 @app.route("/debug/files", endpoint="list_debug_files")
 def list_files():
-    # It's better to check for a specific debug flag than just app.debug
-    if os.getenv("FLASK_ENV") == "development":
+    if os.getenv("FLASK_ENV") == "development" or os.getenv("RENDER_EXTERNAL_URL"): # Allow debug on Render for convenience
         webm_files = sorted(os.listdir(RECDIR))
         mp4_files = sorted(os.listdir(MP4_DIR))
         return f"<h2>WEBM Files ({RECDIR}):</h2><pre>{'<br>'.join(webm_files)}</pre>" \
@@ -383,14 +379,12 @@ def list_files():
 
 @app.route("/delete/<filename>", methods=["POST"], endpoint="delete_file_route")
 def delete_file(filename):
-    # Security: Ensure filename is safe and doesn't traverse directories
     if ".." in filename or filename.startswith("/"):
         return jsonify({"status": "fail", "error": "Invalid filename"}), 400
 
     file_path = os.path.join(RECDIR, filename)
     mp4_file_path = os.path.join(MP4_DIR, filename.replace(".webm", ".mp4"))
     
-    # Security: Verify the final path is still within the intended directory
     if not os.path.abspath(file_path).startswith(os.path.abspath(RECDIR)):
         return jsonify({"status": "fail", "error": "Access denied"}), 403
 
@@ -398,18 +392,15 @@ def delete_file(filename):
         return jsonify({"status": "fail", "error": "File not found"}), 404
     try:
         os.remove(file_path)
-        # Attempt to remove corresponding MP4 file if it exists
         if os.path.exists(mp4_file_path):
             os.remove(mp4_file_path)
             app.logger.info(f"Deleted corresponding MP4 file: {mp4_file_path}")
 
-        # Clean up session data
         token = request.cookies.get("magic_token")
         if token and token in user_sessions and filename in user_sessions[token]:
             user_sessions[token].remove(filename)
             save_json(user_sessions, SESSIONS_FILE)
         
-        # Clean up public links
         global public_links
         public_links = load_json(LINKS_FILE)
         for t, f in list(public_links.items()):
@@ -422,10 +413,8 @@ def delete_file(filename):
         app.logger.error(f"File deletion failed: {e}")
         return jsonify({"status": "fail", "error": "Could not delete the file."}), 500
 
-# NEW ROUTE FOR CONTACT FORM
 @app.route("/contact_us", methods=["POST"], endpoint="contact_us_route")
 def contact_us():
-    # Ensure mail is configured before trying to send
     if not app.config.get("MAIL_USERNAME") or not app.config.get("MAIL_PASSWORD"):
         return jsonify({"status": "fail", "error": "Mail service is not configured on the server."}), 503
 
@@ -438,12 +427,11 @@ def contact_us():
         return jsonify({"status": "fail", "error": "Please fill out all fields."}), 400
 
     try:
-        # Note: The email is sent TO your configured mail username.
         msg = Message(
             subject=f"[GrabScreen Contact] {subject}",
-            recipients=[app.config["MAIL_USERNAME"]], # Sends the email to yourself
+            recipients=[app.config["MAIL_USERNAME"]], 
             body=f"You have a new message from: {from_email}\n\n---\n\n{message_body}",
-            reply_to=from_email # This lets you click "Reply" in your inbox to reply to the user
+            reply_to=from_email
         )
         mail.send(msg)
         return jsonify({"status": "ok", "message": "Your message has been sent!"})
@@ -453,5 +441,4 @@ def contact_us():
 
 
 if __name__ == "__main__":
-    # The debug flag should ideally come from an environment variable
     app.run(debug=(os.getenv("FLASK_ENV") == "development"), port=5001)
