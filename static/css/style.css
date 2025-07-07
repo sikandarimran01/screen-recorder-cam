@@ -523,6 +523,37 @@ dialog textarea:focus {
   background-color: rgba(220, 53, 69, 0.15);
 }
 
+/* ... near the end of the file ... */
+
+/* --- NEW: Important Warning Box Style --- */
+.important-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  background-color: rgba(255, 193, 7, 0.15); /* --warn with opacity */
+  color: var(--warn);
+  border: 1px solid rgba(255, 193, 7, 0.4);
+  border-radius: var(--radius);
+  padding: 1rem;
+  margin-top: 1rem;
+  text-align: left;
+  font-size: 0.95rem;
+}
+body.light .important-warning {
+  color: #664d03; /* Darker yellow text for light mode */
+}
+.important-warning i {
+  font-size: 1.5rem;
+  margin-top: 0.2rem;
+  color: var(--warn);
+}
+.important-warning strong {
+  color: var(--text);
+}
+body.light .important-warning strong {
+  color: #000;
+}
+
 @media (max-width: 640px) {
   body { padding: 1rem; }
   .card { padding: 4rem 1rem 1.5rem; }
