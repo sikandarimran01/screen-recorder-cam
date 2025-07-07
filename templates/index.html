@@ -61,30 +61,36 @@
   <button id="themeToggle" class="theme-toggle" title="Toggle Theme"><i class="fa-solid"></i></button>
 
   <div id="recorderView">
-    <h1>🖥️ Online Screen Recorder</h1>
+    <h1 class="animate-on-load">🖥️ Online Screen & Webcam Recorder</h1>
     
     <div class="feature-highlights">
-      <div class="feature-card">
+      <div class="feature-card animate-on-load">
         <i class="fa-solid fa-bolt"></i>
         <h3>Instant & Free</h3>
-        <p>No downloads, no signup. Just click a button and start recording your screen immediately. 100% free.</p>
+        <p>No downloads, no signup. Just click a button and start recording immediately. 100% free.</p>
       </div>
-      <div class="feature-card">
+      <div class="feature-card animate-on-load">
         <i class="fa-solid fa-shield-halved"></i>
         <h3>Private & Secure</h3>
-        <p>Your recordings are tied to your browser session. You have full control to delete them forever at any time.</p>
+        <p>Your recordings are tied to your browser. You have full control to delete them forever at any time.</p>
       </div>
-      <div class="feature-card">
+      <div class="feature-card animate-on-load">
         <i class="fa-solid fa-scissors"></i>
         <h3>Trim & Share</h3>
-        <p>Quickly trim your recordings to perfection and share with a secure, public, or email link in one click.</p>
+        <p>Quickly trim your recordings to perfection and share with a secure or public link in one click.</p>
+      </div>
+      <div class="feature-card animate-on-load">
+        <i class="fa-solid fa-video"></i>
+        <h3>Webcam Recording</h3>
+        <p>Need a personal touch? Record yourself directly from your webcam. Perfect for video messages.</p>
       </div>
     </div>
 
-    <div class="recorder-controls">
-      <button id="startBtn" class="btn start"><i class="fa-solid fa-circle-play"></i> Start Recording (Screen Only)</button>
-      <!-- NEW: Button for webcam recording -->
-      <button id="startWebcamBtn" class="btn start"><i class="fa-solid fa-camera"></i> Start Recording (Webcam)</button>
+    <div class="recorder-controls animate-on-load">
+      <button id="startBtn" class="btn start"><i class="fa-solid fa-desktop"></i> Record Screen Only</button>
+      <button id="startWebcamBtn" class="btn start"><i class="fa-solid fa-camera-retro"></i> Record Screen + Cam</button>
+      <button id="startWebcamOnlyBtn" class="btn start"><i class="fa-solid fa-video"></i> Record Webcam Only</button>
+      
       <button id="pauseBtn" class="btn warn hidden"><i class="fa-solid fa-pause"></i> Pause</button>
       <button id="resumeBtn" class="btn start hidden"><i class="fa-solid fa-play"></i> Resume</button>
       <button id="stopBtn" class="btn danger hidden"><i class="fa-solid fa-stop"></i> Stop</button>
@@ -92,7 +98,7 @@
     
     <p id="statusMsg"></p>
 
-    <!-- NEW: Webcam and Canvas Display Area -->
+    <!-- Webcam and Canvas Display Area -->
     <div id="webcamCaptureArea" class="hidden">
         <div class="device-selection">
             <label for="audioInput">Microphone:</label>
@@ -101,7 +107,6 @@
             <select id="videoInput"></select>
         </div>
         <div class="webcam-preview-container">
-            <!-- This video shows the webcam feed BEFORE recording starts -->
             <video id="webcamPreview" autoplay muted playsinline></video>
             <div id="webcamOverlayControls" class="hidden">
                 <button id="toggleWebcamOverlay" class="btn btn-small"><i class="fa-solid fa-camera"></i> Toggle Overlay</button>
@@ -109,25 +114,29 @@
                 <button id="resizeWebcamOverlay" class="btn btn-small"><i class="fa-solid fa-expand"></i> Resize</button>
             </div>
         </div>
-        <!-- This canvas is the actual source for the MediaRecorder, where screen and webcam are combined -->
         <canvas id="recordingCanvas" style="display:none;"></canvas>
     </div>
 
-    <section class="how-it-works">
-      <h2>How It Works in 3 Simple Steps</h2>
+    <section class="how-it-works animate-on-load">
+      <h2>How It Works in 4 Simple Steps</h2>
       <div class="how-it-works-grid">
         <div class="step">
           <div class="step-number">1</div>
+          <h3>Choose Your Mode</h3>
+          <p>Select your recording type: Screen Only, Screen + Webcam, or just your Webcam for a personal touch.</p>
+        </div>
+        <div class="step">
+          <div class="step-number">2</div>
           <h3>Click & Record</h3>
           <p>Hit "Start Recording", choose the screen, window, or tab you want to capture, and you're live.</p>
         </div>
         <div class="step">
-          <div class="step-number">2</div>
+          <div class="step-number">3</div>
           <h3>Stop & Edit</h3>
           <p>When you're done, stop the recording. Your video appears instantly, ready for trimming or downloading.</p>
         </div>
         <div class="step">
-          <div class="step-number">3</div>
+          <div class="step-number">4</div>
           <h3>Share Securely</h3>
           <p>Generate a temporary secure link, a permanent public link, or email your video directly.</p>
         </div>
@@ -137,13 +146,7 @@
     <div id="previewArea" class="hidden">
       <video id="preview" controls></video>
       <div id="actionsPanel">
-        <a href="#" class="btn" data-action="download-webm" download><i class="fa-solid fa-download"></i> Download WEBM</a>
-        <button class="btn" data-action="download-mp4"><i class="fa-solid fa-file-video"></i> Download MP4</button>
-        <button class="btn" data-action="secure-link"><i class="fa-solid fa-lock"></i> Secure Link</button>
-        <button class="btn" data-action="public-link"><i class="fa-solid fa-globe"></i> Public Link</button>
-        <button class="btn" data-action="email"><i class="fa-solid fa-envelope"></i> Email</button>
-        <button class="btn" data-action="clip"><i class="fa-solid fa-scissors"></i> Trim</button>
-        <button class="btn danger" data-action="delete"><i class="fa-solid fa-trash-can"></i> Delete</button>
+        <!-- Dynamically populated by main.js -->
       </div>
     </div>
     <section id="clipPanel" class="panel hidden">
@@ -174,13 +177,14 @@
   <section id="privacyView" class="info-panel hidden">
       <button class="btn back-btn"><i class="fa-solid fa-arrow-left"></i> Back to Recorder</button>
       <h1><i class="fa-solid fa-shield-halved"></i> Privacy Policy</h1>
-      <p style="text-align: center; color: var(--muted);">Last Updated: April 26, 2024</p>
+      <p style="text-align: center; color: var(--muted);">Last Updated: May 2024</p>
 
       <p>Welcome to GrabScreen. We are committed to protecting your privacy. This Privacy Policy explains what information we collect, how we use it, and the controls you have over your data on this platform.</p>
 
       <h2>Information We Collect</h2>
       <ul>
-          <li><strong>Screen Recordings:</strong> The video files (.webm) you create are uploaded and stored on our server so that you can access, trim, and share them.</li>
+          <li><strong>Screen Recordings:</strong> The video files (.webm) created from your screen share are uploaded and stored on our server so that you can access, trim, and share them.</li>
+          <li><strong>Webcam Recordings:</strong> If you use the "Record Webcam Only" or "Record Screen + Cam" features, the video from your camera is also uploaded and stored on our servers. This data is treated with the same privacy and control as screen recordings.</li>
           <li><strong>Anonymous Session Cookie:</strong> We use a single, functional cookie (your "magic_token") to associate your recordings with your browser. This token is a random string of characters and contains no personal information. It is used solely to display your list of files on your return visits.</li>
           <li><strong>Email Addresses:</strong> We only collect an email address when you voluntarily provide it through the "Email" sharing feature. We do not store this email address after the email has been sent.</li>
       </ul>
@@ -277,6 +281,61 @@
 
     <button id="contactSendBtn" class="btn share"><i class="fa-solid fa-paper-plane"></i> Send Message</button>
     <button id="contactCancelBtn" class="btn cancel" formmethod="dialog">Cancel</button>
+  </dialog>
+
+  <!-- SCREEN-ONLY TIPS MODAL -->
+  <dialog id="screenOnlyTipsModal">
+    <h2><i class="fa-solid fa-circle-info"></i> Screen Recording Tips</h2>
+    <p style="text-align: center; color: var(--muted); margin-bottom: 2rem;">
+      Your browser will now ask you what to share. Here's a quick guide.
+    </p>
+    <div class="tip-section success">
+      <h4><i class="fa-solid fa-check-circle"></i> Tip: It's OK to Minimize!</h4>
+      <p>
+        In "Screen Only" mode, you can safely <strong>minimize this GrabScreen window</strong> after starting. Your recording will continue perfectly.
+      </p>
+    </div>
+    <div class="tip-section">
+      <h4><i class="fa-brands fa-chrome"></i> Browser Tab (Best for Audio)</h4>
+      <p>Best for recording a web page with sound (like YouTube). Remember to check "Share tab audio".</p>
+    </div>
+    <div class="tip-section">
+      <h4><i class="fa-solid fa-window-maximize"></i> Window</h4>
+      <p>Ideal for focusing on one app (like PowerPoint). Usually does not capture audio.</p>
+    </div>
+    <div class="tip-section">
+      <h4><i class="fa-solid fa-desktop"></i> Entire Screen</h4>
+      <p>Records everything you see. Most flexible, but least private. May capture system audio.</p>
+    </div>
+    <button id="proceedScreenOnlyBtn" class="btn start" style="width: 100%; margin-top: 1.5rem; font-size: 1.1rem;">
+        <i class="fa-solid fa-circle-play"></i> Got it, Proceed to Share
+    </button>
+    <button class="btn cancel" style="width: 100%;" formmethod="dialog">Cancel</button>
+  </dialog>
+
+  <!-- SCREEN + CAM TIPS MODAL -->
+  <dialog id="combinedTipsModal">
+    <h2><i class="fa-solid fa-circle-info"></i> Screen + Cam Recording Tips</h2>
+     <p style="text-align: center; color: var(--muted); margin-bottom: 2rem;">
+      Your browser will ask what to share. Please read the important warning below.
+    </p>
+    <div class="tip-section warning">
+      <h4><i class="fa-solid fa-triangle-exclamation"></i> Important: Do Not Minimize!</h4>
+      <p>
+        To keep your webcam in the video, <strong>do not minimize this GrabScreen browser window</strong>.
+        Minimizing it will cause your webcam to freeze or disappear from the recording.
+        <br><br>
+        <strong>What to do instead:</strong> Simply switch to your desired application after starting. This GrabScreen tab must remain open and visible in the background.
+      </p>
+    </div>
+    <div class="tip-section">
+        <h4><i class="fa-solid fa-desktop"></i> Best Option: Entire Screen</h4>
+        <p>For Screen + Cam recording, sharing your <strong>Entire Screen</strong> is the most reliable option and allows you to switch between different applications seamlessly.</p>
+    </div>
+    <button id="proceedCombinedBtn" class="btn start" style="width: 100%; margin-top: 1.5rem; font-size: 1.1rem;">
+        <i class="fa-solid fa-circle-play"></i> Got it, Proceed to Share
+    </button>
+    <button class="btn cancel" style="width: 100%;" formmethod="dialog">Cancel</button>
   </dialog>
 
   <footer class="site-footer">
