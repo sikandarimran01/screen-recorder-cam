@@ -48,6 +48,9 @@ body {
   transition: background 0.3s ease, color 0.3s ease;
 }
 h1, h2 { color: var(--text); }
+#recorderView > h1 {
+  margin-top: 1.5rem;
+}
 a { color: var(--brand); text-decoration: none; }
 a:hover { text-decoration: underline; }
 .hidden { display: none !important; }
@@ -55,7 +58,7 @@ a:hover { text-decoration: underline; }
 /* --- Main Card Layout --- */
 .card {
   background: var(--card);
-  padding: 4rem 2rem 2rem;
+  padding: 3.5rem 2rem 1.5rem;
   border-radius: var(--radius);
   width: 100%;
   max-width: 700px;
@@ -104,7 +107,6 @@ a:hover { text-decoration: underline; }
 .btn.share  { background: var(--brand);   color: #fff; }
 .btn.cancel { background: #6c757d;      color: #fff; }
 .btn.warn { background: var(--warn); color: #000; }
-/* New small button style for webcam controls */
 .btn.btn-small {
   padding: 0.4rem 0.8rem;
   font-size: 0.85rem;
@@ -146,12 +148,12 @@ a:hover { text-decoration: underline; }
 }
 body.light #actionsPanel { background: #f8f9fa; }
 
-/* +++ START: NEW Feature Highlights & How-It-Works Styles +++ */
+/* +++ Feature Highlights & How-It-Works Styles +++ */
 .feature-highlights {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 1rem;
-  margin: 2.5rem 0;
+  margin: 1.25rem 0;
   text-align: left;
 }
 .feature-card {
@@ -180,17 +182,17 @@ body.light #actionsPanel { background: #f8f9fa; }
 }
 
 .how-it-works {
-  margin: 2.5rem 0;
-  padding-top: 2rem;
+  margin: 1.25rem 0;
+  padding-top: 1.5rem;
   border-top: 1px solid var(--border);
 }
 .how-it-works h2 {
   margin-top: 0;
-  margin-bottom: 2rem;
+  margin-bottom: 1.5rem;
 }
 .how-it-works-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 1.5rem;
   text-align: center;
 }
@@ -217,9 +219,8 @@ body.light #actionsPanel { background: #f8f9fa; }
   line-height: 1.5;
   margin: 0;
 }
-/* +++ END: NEW Styles +++ */
 
-/* --- NEW: Webcam Capture Area Styles --- */
+/* --- Webcam Capture Area Styles --- */
 #webcamCaptureArea {
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -231,7 +232,7 @@ body.light #actionsPanel { background: #f8f9fa; }
 .device-selection {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.75rem 1.5rem; /* Row gap, column gap */
+  gap: 0.75rem 1.5rem;
   justify-content: center;
   align-items: center;
   margin-bottom: 1.5rem;
@@ -250,27 +251,26 @@ body.light #actionsPanel { background: #f8f9fa; }
   color: var(--text);
   font-size: 0.95rem;
   cursor: pointer;
-  -webkit-appearance: none; /* Remove default arrow on WebKit browsers */
-  -moz-appearance: none;    /* Remove default arrow on Firefox */
-  appearance: none;         /* Remove default arrow */
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%236c757d'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 0.7rem center;
   background-size: 1em;
-  padding-right: 2.5rem; /* Make space for the custom arrow */
+  padding-right: 2.5rem;
 }
 body.dark .device-selection select {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23aaa'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
 }
 
-
 .webcam-preview-container {
-  position: relative; /* Crucial for positioning the webcam preview and controls */
+  position: relative;
   width: 100%;
-  padding-top: 56.25%; /* 16:9 aspect ratio (height / width * 100%) */
+  padding-top: 56.25%;
   background: #000;
   border-radius: var(--radius);
-  overflow: hidden; /* Ensure webcam doesn't spill out */
+  overflow: hidden;
   margin-bottom: 1rem;
   border: 1px solid var(--border);
 }
@@ -280,23 +280,21 @@ body.dark .device-selection select {
   top: 0; left: 0;
   width: 100%;
   height: 100%;
-  object-fit: contain; /* Ensure the screen recording fits the container */
-  z-index: 1; /* Screen video is background */
+  object-fit: contain;
+  z-index: 1;
 }
-/* Webcam overlay specific styling */
 #webcamPreview.webcam-overlay {
-  position: absolute; /* Allows precise positioning */
-  object-fit: cover; /* Cover ensures webcam fills its own box */
-  border-radius: 8px; /* Slightly rounded corners for the overlay */
-  border: 3px solid var(--brand); /* Highlight the webcam feed */
-  z-index: 2; /* Webcam is foreground */
-  /* Default position and size (will be overridden by JS) */
+  position: absolute;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 3px solid var(--brand);
+  z-index: 2;
   width: 25%;
-  height: auto; /* Maintain aspect ratio */
+  height: auto;
   bottom: 20px;
   right: 20px;
-  transform: translate(0,0); /* Reset any transform to ease calculation */
-  cursor: grab; /* Indicate draggable */
+  transform: translate(0,0);
+  cursor: grab;
   box-shadow: 0 4px 15px rgba(0,0,0,0.3);
   transition: box-shadow 0.2s ease, border-color 0.2s ease;
 }
@@ -305,7 +303,7 @@ body.dark .device-selection select {
   box-shadow: 0 6px 20px rgba(0,0,0,0.4);
 }
 #webcamPreview.resizing {
-  cursor: se-resize; /* Cursor for resizing */
+  cursor: se-resize;
 }
 #webcamPreview.hidden-overlay {
   display: none !important;
@@ -321,7 +319,7 @@ body.dark .device-selection select {
   padding: 0.5rem 1rem;
   display: flex;
   gap: 0.5rem;
-  z-index: 3; /* Above webcam overlay */
+  z-index: 3;
   box-shadow: 0 2px 10px rgba(0,0,0,0.3);
 }
 
@@ -428,9 +426,7 @@ dialog input {
 }
 
 /* --- Advanced Clip Trimmer --- */
-#clipPanel {
-  text-align: center;
-}
+#clipPanel { text-align: center; }
 .panel-header {
   display: flex;
   justify-content: space-between;
@@ -440,7 +436,7 @@ dialog input {
 .panel-header h2 { margin: 0; font-size: 1.25rem; }
 .btn-close {
   background: none; border: none; font-size: 2rem;
-  font-weight: 300; color: var(--muted); cursor: pointer; line-height: 1; /* Fixed line--height */
+  font-weight: 300; color: var(--muted); cursor: pointer; line-height: 1;
 }
 .trim-slider-wrapper {
   display: flex; align-items: center; gap: 1rem; margin: 1rem 0;
@@ -469,11 +465,48 @@ dialog input {
 .fade-in { animation: fadeIn 0.5s ease both; }
 @keyframes fadeOut { to { opacity: 0; transform: scale(0.9); } }
 
+/* Landing Page Animations */
+@keyframes slideUpFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-on-load {
+  opacity: 0;
+  animation: slideUpFadeIn 0.6s ease-out forwards;
+}
+#recorderView > h1.animate-on-load {
+  animation-delay: 0.1s;
+}
+.feature-highlights .feature-card.animate-on-load:nth-child(1) {
+  animation-delay: 0.2s;
+}
+.feature-highlights .feature-card.animate-on-load:nth-child(2) {
+  animation-delay: 0.3s;
+}
+.feature-highlights .feature-card.animate-on-load:nth-child(3) {
+  animation-delay: 0.4s;
+}
+.feature-highlights .feature-card.animate-on-load:nth-child(4) {
+  animation-delay: 0.5s;
+}
+.recorder-controls.animate-on-load {
+  animation-delay: 0.7s;
+}
+.how-it-works.animate-on-load {
+  animation-delay: 0.9s;
+}
+
 /* Mobile Warning Modal Specifics */
 #mobileWarningModal p { margin: 1rem 0; line-height: 1.6; }
 #mobileWarningModal strong { color: var(--brand); }
 
-/* --- NEW: Attractive Contact Form Modal Styles --- */
+/* --- Attractive Contact Form Modal Styles --- */
 dialog textarea {
   width: 100%;
   border: 1px solid var(--border);
@@ -488,14 +521,12 @@ dialog textarea {
   min-height: 120px;
   transition: all 0.2s ease-in-out;
 }
-
 dialog input:focus,
 dialog textarea:focus {
   outline: none;
   border-color: var(--brand);
   box-shadow: 0 0 0 4px rgba(13, 110, 253, 0.2);
 }
-
 #contactModal label {
   display: block;
   text-align: left;
@@ -503,14 +534,13 @@ dialog textarea:focus {
   margin-bottom: 0.25rem;
   color: var(--muted);
 }
-
 #contactStatus {
   font-weight: 500;
   padding: 0.75rem;
   border-radius: 5px;
   text-align: center;
   margin-bottom: 1rem;
-  display: none; /* Hide by default, JS will show it */
+  display: none;
 }
 #contactStatus.success {
   display: block;
@@ -523,6 +553,56 @@ dialog textarea:focus {
   background-color: rgba(220, 53, 69, 0.15);
 }
 
+/* --- Recording Tips Modal Styles --- */
+#screenOnlyTipsModal, #combinedTipsModal {
+  text-align: left;
+  max-width: 550px;
+}
+.tip-section {
+  background: var(--card-highlight-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem 1.5rem;
+  margin-bottom: 1rem;
+}
+.tip-section h4 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.1rem;
+  color: var(--brand);
+}
+.tip-section h4 i {
+  margin-right: 0.75rem;
+  color: var(--brand);
+  opacity: 0.8;
+  width: 20px;
+  text-align: center;
+}
+.tip-section p {
+  margin: 0;
+  line-height: 1.6;
+  font-size: 0.95rem;
+  color: var(--muted);
+}
+.tip-section strong {
+  color: var(--text);
+  font-weight: 600;
+}
+.tip-section.warning {
+  background-color: rgba(255, 193, 7, 0.15);
+  border-color: var(--warn);
+}
+.tip-section.warning h4 { color: var(--warn); }
+.tip-section.warning h4 i { color: var(--warn); }
+.tip-section.warning p { color: var(--text); opacity: 0.9; }
+.tip-section.success {
+  background-color: rgba(25, 135, 84, 0.1);
+  border-color: var(--success);
+}
+.tip-section.success h4 { color: var(--success); }
+.tip-section.success h4 i { color: var(--success); }
+.tip-section.success p { color: var(--text); opacity: 0.9; }
+
+
 @media (max-width: 640px) {
   body { padding: 1rem; }
   .card { padding: 4rem 1rem 1.5rem; }
@@ -530,7 +610,7 @@ dialog textarea:focus {
     width: 100%; 
     margin: 0.25rem 0;
   }
-  .back-btn { width: aauto; }
+  .back-btn { width: auto; }
   .device-selection {
     flex-direction: column;
     align-items: flex-start;
@@ -541,6 +621,6 @@ dialog textarea:focus {
   #webcamOverlayControls {
     flex-wrap: wrap;
     justify-content: center;
-    bottom: 5px; /* Adjust for smaller screens */
+    bottom: 5px;
   }
 }
