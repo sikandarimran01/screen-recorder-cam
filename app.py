@@ -11,20 +11,15 @@ print("DEBUG: app.py is being loaded!")
 
 load_dotenv() 
 
-# --- Removed duplicate Flask app initialization ---
-app = Flask(__name__)
+app = Flask(__name__) # Only one app = Flask(__name__) needed here
 
 # --- NEW: Explicit Logging Configuration ---
 import logging
-# Set logging level for the application
 app.logger.setLevel(logging.INFO)
-# Create a handler to write logs to stdout
 handler = logging.StreamHandler()
 handler.setLevel(logging.INFO)
-# Define a formatter for the log messages
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 handler.setFormatter(formatter)
-# Add the handler to the app's logger if not already present
 if not app.logger.handlers:
     app.logger.addHandler(handler)
 # --- END NEW Logging Configuration ---
@@ -52,24 +47,24 @@ if IS_WINDOWS:
     # --- Paths for Windows Local Development ---
     # IMPORTANT: VERIFY THESE PATHS ON YOUR MACHINE!
     # RECDIR should be where you want recordings to be saved locally
-    RECDIR = "E:\\GrabScreen_Recordings" 
+    RECDIR = "E:\\GrabScreen_Recordings" # <--- Ensure this path exists and is accessible locally
     # FFMPEG_DIR should be the path to the 'bin' folder containing ffmpeg.exe
-    FFMPEG_DIR = "C:\\ffmpeg-full\\bin" # e.g., "C:\\ffmpeg-7.0.2-full_build\\bin"
+    FFMPEG_DIR = "C:\\ffmpeg-full\\bin" # <--- e.g., "C:\\ffmpeg-7.0.2-full_build\\bin" (VERIFY!)
     FFMPEG_PATH = os.path.join(FFMPEG_DIR, "ffmpeg.exe") # Add .exe for Windows
 else:
     # --- Paths for Linux/Render Deployment ---
-    # Render's persistent disk path
-    RECDIR = "/mnt/recordings" 
-    # On Render, FFmpeg is usually installed system-wide or in /usr/bin/
-    # If it's in PATH, just "ffmpeg" works. Otherwise, specify full path.
-    FFMPEG_PATH = "ffmpeg" # Assumes 'ffmpeg' is in the system's PATH
-    # If you put ffmpeg static build into /mnt/recordings, use this:
-    # FFMPEG_PATH = "/mnt/recordings/ffmpeg-7.0.2-amd64-static/ffmpeg"
-    # No FFMPEG_DIR variable needed if FFMPEG_PATH is a direct executable name or full path.
+    # RECDIR must point to your Render Persistent Disk mount path + a subdirectory for your files
+    RECDIR = "/var/data/recordings" # <--- CHANGED THIS TO USE RENDER'S PERSISTENT DISK
+    # On Render, FFmpeg is usually installed system-wide (e.g., via apt-get).
+    # If it's in the system's PATH, just "ffmpeg" is enough.
+    FFMPEG_PATH = "ffmpeg" # Assumes 'ffmpeg' is in the system's PATH on Render
+    # If you put a static ffmpeg build on the persistent disk, the path would be:
+    # FFMPEG_PATH = "/var/data/ffmpeg-7.0.2-amd64-static/ffmpeg" 
+    # (assuming you extracted 'ffmpeg-7.0.2-amd64-static' into /var/data/)
 
 MP4_DIR = os.path.join(RECDIR, "mp4_converted")
 
-# Ensure directories exist
+# Ensure directories exist (will now create them inside /var/data/recordings)
 os.makedirs(RECDIR, exist_ok=True)
 os.makedirs(MP4_DIR, exist_ok=True) 
 
@@ -191,8 +186,7 @@ def clip(orig):
         "-y", out_path
     ]
     try:
-        # Use shell=True on Windows if FFMPEG_PATH is not a full path or in PATH
-        # For cross-platform, safer to always provide full path and not use shell=True
+        # For cross-platform, it's safer to rely on FFMPEG_PATH being an absolute path or in system PATH.
         subprocess.run(cmd, check=True, capture_output=True, text=True) 
         token = request.cookies.get("magic_token")
         if token and token in user_sessions:
@@ -255,8 +249,6 @@ def download_mp4(filename):
     ]
 
     app.logger.info(f"DEBUG: FFmpeg command list: {ffmpeg_cmd}")
-    # os.path.exists only works for absolute paths. If FFMPEG_PATH is "ffmpeg", this is False.
-    # This line is for debugging the *path* itself, not whether 'ffmpeg' is in system PATH.
     app.logger.info(f"DEBUG: Checking FFMPEG_PATH existence: {os.path.exists(FFMPEG_PATH)}")
 
     try:
@@ -284,7 +276,6 @@ def download_mp4(filename):
         app.logger.error(f"❌ FFmpeg conversion failed for {filename} with error code {e.returncode}:\n{e.stderr}")
         return jsonify({"status": "fail", "error": f"Video conversion failed: {e.stderr}"}), 500
     except FileNotFoundError:
-        # This specifically catches if 'ffmpeg' command itself is not found in PATH or at the absolute path
         app.logger.error(f"❌ FFmpeg command not found. Ensure FFmpeg is installed on the server at '{FFMPEG_PATH}' or is in the system's PATH.")
         return jsonify({"status": "fail", "error": "Server error: FFmpeg not found for video conversion."}), 500
     except Exception as e:
@@ -352,7 +343,6 @@ def serve_public_file(token):
 @app.route("/send_email", methods=["POST"], endpoint="send_email_route")
 def send_email():
     data = request.get_json()
-    # Check if mail is configured before trying to send
     if not app.config.get("MAIL_USERNAME") or not app.config.get("MAIL_PASSWORD"):
         return jsonify({"status": "fail", "error": "Mail service is not configured on the server."}), 503
 
@@ -370,7 +360,8 @@ def send_email():
 
 @app.route("/debug/files", endpoint="list_debug_files")
 def list_files():
-    if os.getenv("FLASK_ENV") == "development" or os.getenv("RENDER_EXTERNAL_URL"): # Allow debug on Render for convenience
+    # Allow debug on Render for convenience if RENDER_EXTERNAL_URL is set
+    if os.getenv("FLASK_ENV") == "development" or os.getenv("RENDER_EXTERNAL_URL"): 
         webm_files = sorted(os.listdir(RECDIR))
         mp4_files = sorted(os.listdir(MP4_DIR))
         return f"<h2>WEBM Files ({RECDIR}):</h2><pre>{'<br>'.join(webm_files)}</pre>" \
