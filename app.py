@@ -49,7 +49,7 @@ if IS_WINDOWS:
     # RECDIR should be where you want recordings to be saved locally
     RECDIR = "E:\\GrabScreen_Recordings" # <--- Ensure this path exists and is accessible locally
     # FFMPEG_DIR should be the path to the 'bin' folder containing ffmpeg.exe
-    FFMPEG_DIR = "C:\\ffmpeg-full\\bin" # <--- e.g., "C:\\ffmpeg-7.0.2-full_build\\bin" (VERIFY!)
+    FFMPEG_DIR = "C:\\ffmpeg-7.1.1-essentials_build\\bin" # <--- e.g., "C:\\ffmpeg-7.0.2-full_build\\bin" (VERIFY!)
     FFMPEG_PATH = os.path.join(FFMPEG_DIR, "ffmpeg.exe") # Add .exe for Windows
 else:
     # --- Paths for Linux/Render Deployment ---
