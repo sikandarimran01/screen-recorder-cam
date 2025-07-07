@@ -52,7 +52,6 @@ document.addEventListener("DOMContentLoaded", () => {
   let webcamAspectRatio = 16 / 9; // Default to common aspect ratio, will be updated from stream
 
   // NEW: Persistent video elements for canvas drawing
-  // These elements are created once and constantly play their respective streams
   let screenVideoElementForCanvas = null;
   let webcamVideoElementForCanvas = null;
 
@@ -198,7 +197,6 @@ document.addEventListener("DOMContentLoaded", () => {
   async function populateMediaDevices() {
     try {
       // Request initial permissions if not already granted to get device labels
-      // These are non-blocking and may prompt the user.
       try { await navigator.mediaDevices.getUserMedia({ audio: true, video: true }); } catch (e) { console.warn("Initial media access denied or not available:", e); }
       
       const devices = await navigator.mediaDevices.enumerateDevices();
@@ -280,6 +278,7 @@ document.addEventListener("DOMContentLoaded", () => {
           const { width, height } = videoTrack.getSettings();
           webcamAspectRatio = (width && height) ? (width / height) : (16 / 9); // Fallback to 16:9
           webcamSize.width = 0.25; 
+          // After getting stream and setting srcObject, call updateStyle to apply initial overlay
           updateWebcamOverlayStyle(); 
       } else {
         webcamOverlayControls.classList.add('hidden'); 
@@ -314,12 +313,10 @@ document.addEventListener("DOMContentLoaded", () => {
     if (screenVideoElementForCanvas) {
       screenVideoElementForCanvas.pause();
       screenVideoElementForCanvas.srcObject = null;
-      // screenVideoElementForCanvas.remove(); // Can keep for reuse if preferred
     }
     if (webcamVideoElementForCanvas) {
       webcamVideoElementForCanvas.pause();
       webcamVideoElementForCanvas.srcObject = null;
-      // webcamVideoElementForCanvas.remove(); // Can keep for reuse if preferred
     }
 
     if (audioContext) {
@@ -332,7 +329,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     webcamPreview.classList.remove('webcam-overlay', 'resizing', 'is-dragging', 'hidden-overlay'); 
     webcamPreview.srcObject = null; 
-    webcamPreview.style.cssText = ''; 
+    webcamPreview.style.cssText = ''; // Clear inline styles
     webcamOverlayControls.classList.add('hidden');
     isWebcamOverlayVisible = true; 
     toggleWebcamOverlayBtn.innerHTML = `<i class="fa-solid fa-camera"></i> Hide Overlay`; 
@@ -432,7 +429,7 @@ document.addEventListener("DOMContentLoaded", () => {
     
     const container = webcamPreview.parentElement;
     
-    webcamPosition = { x: 0.7, y: 0.7 }; 
+    webcamPosition = { x: 0.7, y: 0.7 }; // Reset position/size when setting up controls
     webcamSize = { width: 0.25, height: 0.25 }; 
     updateWebcamOverlayStyle(); 
 
@@ -458,7 +455,7 @@ document.addEventListener("DOMContentLoaded", () => {
             newY = Math.max(0, Math.min(newY, containerRect.height - webcamPreview.offsetHeight));
 
             webcamPosition.x = newX / containerRect.width;
-            webcamPosition.y = newY / containerRect.Iheight;
+            webcamPosition.y = newY / containerRect.height;
             
             webcamPreview.style.left = `${newX}px`;
             webcamPreview.style.top = `${newY}px`;
@@ -572,11 +569,18 @@ document.addEventListener("DOMContentLoaded", () => {
   const startCombinedRecording = async () => {
       statusMsg.textContent = "⏳ Starting combined recording...";
       try {
+          // Request screen share (must be done by user click)
           screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true }); 
-          await getWebcamAndMicStream(); 
+          // Re-fetch webcam/mic to ensure latest device selection and correct tracks
+          await getWebcamAndMicStream(); // This also sets webcamPreview.srcObject = webcamStream
 
+          // Now, webcamPreview needs to display the screen stream for the live preview
+          // The webcam will be drawn onto the canvas.
           webcamPreview.srcObject = screenStream; 
-          setupWebcamOverlayControls(); 
+          // setupWebcamOverlayControls() was already called when preparing, no need to call again here.
+          // Just ensure the overlay CSS class is active if it somehow got removed.
+          webcamPreview.classList.add('webcam-overlay');
+
 
           const combinedStream = await getCombinedStream();
           mediaRecorder = new MediaRecorder(combinedStream, { mimeType: "video/webm; codecs=vp8" }); // Explicitly set VP8
@@ -678,6 +682,9 @@ document.addEventListener("DOMContentLoaded", () => {
     await populateMediaDevices(); 
     await getWebcamAndMicStream(); 
     
+    // <--- CRITICAL FIX: Call setupWebcamOverlayControls() here!
+    setupWebcamOverlayControls(); 
+
     if (startBtn.currentListener) {
         startBtn.removeEventListener("click", startBtn.currentListener);
     }
