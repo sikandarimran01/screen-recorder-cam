@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>GrabScreen – Free Online Screen Recorder | Record, Trim, Share | No Login & Signup</title>
+  <meta name="description" content="GrabScreen is a free, fast, and private online screen recorder. Record your screen instantly without installing anything. Save, trim, share, or embed videos in one click." />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="canonical" href="{{ request.url_root }}" />
+  
+  <!-- Social Media & Open Graph -->
+  <meta property="og:title" content="GrabScreen – Free Online Screen Recorder" />
+  <meta property="og:image" content="{{ url_for('static', filename='logo.png', _external=True) }}" />
+  
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}" />
+  
+  <!-- Icons & Fonts -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  
+  <!-- noUiSlider Library -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.7.1/nouislider.min.css" />
+  
+  <!-- Your Stylesheet -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-G-S6QGKG1LF2"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-S6QGKG1LF2');
+</script>
+
+  <!-- NEW: Structured Data (JSON-LD) for Site Logo -->
+<script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "GrabScreen",
+    "url": "{{ request.url_root.rstrip('/') }}",
+    "publisher": {
+      "@type": "Organization",
+      "name": "GrabScreen",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "{{ url_for('static', filename='logo.png', _external=True) }}"
+      }
+    }
+  }
+</script>
+
+</head>
+
+<body>
+<main class="card fade-in">
+  <div id="logoBrand">
+    <img src="{{ url_for('static', filename='logo.png') }}" alt="GrabScreen Logo" />
+  </div>
+  <button id="themeToggle" class="theme-toggle" title="Toggle Theme"><i class="fa-solid"></i></button>
+
+  <div id="recorderView">
+    <h1>🖥️ Online Screen Recorder</h1>
+    
+    <div class="feature-highlights">
+      <div class="feature-card">
+        <i class="fa-solid fa-bolt"></i>
+        <h3>Instant & Free</h3>
+        <p>No downloads, no signup. Just click a button and start recording your screen immediately. 100% free.</p>
+      </div>
+      <div class="feature-card">
+        <i class="fa-solid fa-shield-halved"></i>
+        <h3>Private & Secure</h3>
+        <p>Your recordings are tied to your browser session. You have full control to delete them forever at any time.</p>
+      </div>
+      <div class="feature-card">
+        <i class="fa-solid fa-scissors"></i>
+        <h3>Trim & Share</h3>
+        <p>Quickly trim your recordings to perfection and share with a secure, public, or email link in one click.</p>
+      </div>
+    </div>
+
+    <div class="recorder-controls">
+      <button id="startBtn" class="btn start"><i class="fa-solid fa-circle-play"></i> Start Recording (Screen Only)</button>
+      <!-- NEW: Button for webcam recording -->
+      <button id="startWebcamBtn" class="btn start"><i class="fa-solid fa-camera"></i> Start Recording (Webcam)</button>
+      <button id="pauseBtn" class="btn warn hidden"><i class="fa-solid fa-pause"></i> Pause</button>
+      <button id="resumeBtn" class="btn start hidden"><i class="fa-solid fa-play"></i> Resume</button>
+      <button id="stopBtn" class="btn danger hidden"><i class="fa-solid fa-stop"></i> Stop</button>
+    </div>
+    
+    <p id="statusMsg"></p>
+
+    <!-- NEW: Webcam and Canvas Display Area -->
+    <div id="webcamCaptureArea" class="hidden">
+        <div class="device-selection">
+            <label for="audioInput">Microphone:</label>
+            <select id="audioInput"></select>
+            <label for="videoInput">Camera:</label>
+            <select id="videoInput"></select>
+        </div>
+        <div class="webcam-preview-container">
+            <!-- This video shows the webcam feed BEFORE recording starts -->
+            <video id="webcamPreview" autoplay muted playsinline></video>
+            <div id="webcamOverlayControls" class="hidden">
+                <button id="toggleWebcamOverlay" class="btn btn-small"><i class="fa-solid fa-camera"></i> Toggle Overlay</button>
+                <button id="moveWebcamOverlay" class="btn btn-small"><i class="fa-solid fa-arrows-up-down-left-right"></i> Move</button>
+                <button id="resizeWebcamOverlay" class="btn btn-small"><i class="fa-solid fa-expand"></i> Resize</button>
+            </div>
+        </div>
+        <!-- This canvas is the actual source for the MediaRecorder, where screen and webcam are combined -->
+        <canvas id="recordingCanvas" style="display:none;"></canvas>
+    </div>
+
+    <section class="how-it-works">
+      <h2>How It Works in 3 Simple Steps</h2>
+      <div class="how-it-works-grid">
+        <div class="step">
+          <div class="step-number">1</div>
+          <h3>Click & Record</h3>
+          <p>Hit "Start Recording", choose the screen, window, or tab you want to capture, and you're live.</p>
+        </div>
+        <div class="step">
+          <div class="step-number">2</div>
+          <h3>Stop & Edit</h3>
+          <p>When you're done, stop the recording. Your video appears instantly, ready for trimming or downloading.</p>
+        </div>
+        <div class="step">
+          <div class="step-number">3</div>
+          <h3>Share Securely</h3>
+          <p>Generate a temporary secure link, a permanent public link, or email your video directly.</p>
+        </div>
+      </div>
+    </section>
+
+    <div id="previewArea" class="hidden">
+      <video id="preview" controls></video>
+      <div id="actionsPanel">
+        <a href="#" class="btn" data-action="download-webm" download><i class="fa-solid fa-download"></i> Download WEBM</a>
+        <button class="btn" data-action="download-mp4"><i class="fa-solid fa-file-video"></i> Download MP4</button>
+        <button class="btn" data-action="secure-link"><i class="fa-solid fa-lock"></i> Secure Link</button>
+        <button class="btn" data-action="public-link"><i class="fa-solid fa-globe"></i> Public Link</button>
+        <button class="btn" data-action="email"><i class="fa-solid fa-envelope"></i> Email</button>
+        <button class="btn" data-action="clip"><i class="fa-solid fa-scissors"></i> Trim</button>
+        <button class="btn danger" data-action="delete"><i class="fa-solid fa-trash-can"></i> Delete</button>
+      </div>
+    </div>
+    <section id="clipPanel" class="panel hidden">
+      <div class="panel-header">
+        <h2><i class="fa-solid fa-scissors"></i> Trim Clip</h2>
+        <button id="clipCancel" class="btn-close" title="Close">×</button>
+      </div>
+      <div class="trim-slider-wrapper">
+        <div class="time-readout" id="trim-start-time">00:00</div>
+        <div id="trim-slider"></div>
+        <div class="time-readout" id="trim-end-time">00:00</div>
+      </div>
+      <div class="panel-actions">
+        <button id="clipGo" class="btn share"><i class="fa-solid fa-share-nodes"></i> Create & Share Clip</button>
+      </div>
+    </section>
+
+    <div class="session-controls">
+      <button id="sessionBtn" class="btn hidden"><i class="fa-solid fa-clock-rotate-left"></i> My Recordings</button>
+      <button id="forgetBtn" class="btn cancel hidden"><i class="fa-solid fa-user-slash"></i> Forget My Session</button>
+    </div>
+    <section id="filesPanel" class="hidden">
+      <h2>Your Recordings</h2>
+      <div id="mediaGrid" class="grid-container"></div>
+    </section>
+  </div>
+
+  <section id="privacyView" class="info-panel hidden">
+      <button class="btn back-btn"><i class="fa-solid fa-arrow-left"></i> Back to Recorder</button>
+      <h1><i class="fa-solid fa-shield-halved"></i> Privacy Policy</h1>
+      <p style="text-align: center; color: var(--muted);">Last Updated: April 26, 2024</p>
+
+      <p>Welcome to GrabScreen. We are committed to protecting your privacy. This Privacy Policy explains what information we collect, how we use it, and the controls you have over your data on this platform.</p>
+
+      <h2>Information We Collect</h2>
+      <ul>
+          <li><strong>Screen Recordings:</strong> The video files (.webm) you create are uploaded and stored on our server so that you can access, trim, and share them.</li>
+          <li><strong>Anonymous Session Cookie:</strong> We use a single, functional cookie (your "magic_token") to associate your recordings with your browser. This token is a random string of characters and contains no personal information. It is used solely to display your list of files on your return visits.</li>
+          <li><strong>Email Addresses:</strong> We only collect an email address when you voluntarily provide it through the "Email" sharing feature. We do not store this email address after the email has been sent.</li>
+      </ul>
+
+      <h2>How We Use Your Information</h2>
+      <ul>
+          <li><strong>To Provide the Service:</strong> Your recordings are stored to allow you to view, download, or create clips from them.</li>
+          <li><strong>To Maintain Your Session:</strong> The "magic_token" cookie ensures that when you revisit our site from the same browser, you see your own list of recordings.</li>
+          <li><strong>To Fulfill Your Requests:</strong> When you use the "Email" feature, we use the provided email address to send a one-time email containing the link to your recording.</li>
+      </ul>
+      
+      <h2>Your Control and Data Rights</h2>
+      <p>You have complete control over your recordings. Here’s how:</p>
+      <ul>
+          <li><strong><i class="fa-solid fa-trash-can"></i> Deleting a File:</strong> Using the "Delete" button on a recording will <strong>permanently and irreversibly</strong> delete the video file from our server. This also removes any public or secure links associated with it.</li>
+          <li><strong><i class="fa-solid fa-user-slash"></i> Forgetting Your Session:</strong> Using the "Forget My Session" button will delete the "magic_token" cookie from your browser. This means your list of recordings will disappear from your view, but the <strong>files will remain on the server</strong> until you delete them individually. This is for your privacy in a shared computer environment.</li>
+          <li><strong><i class="fa-solid fa-globe"></i> Public Links:</strong> When you create a "Public Link", anyone with that link can view the recording. The link remains active until you delete the source file.</li>
+          <li><strong><i class="fa-solid fa-lock"></i> Secure Links:</strong> "Secure Links" are temporary and expire after a short period (15 minutes). They are ideal for private, one-time sharing.</li>
+      </ul>
+
+      <h2>Third-Party Services</h2>
+      <p>We use Google's SMTP server to send emails on your behalf. We also use public CDNs to load resources like fonts and scripts for better performance. These third parties have their own privacy policies, and we do not share your recording data with them beyond what is necessary to provide the service (e.g., sending an email link).</p>
+      
+      <h2>Changes to This Policy</h2>
+      <p>We may update this policy from time to time. We will notify you of any changes by posting the new Privacy Policy on this page.</p>
+  </section>
+  <section id="contactView" class="info-panel hidden">
+      <button class="btn back-btn"><i class="fa-solid fa-arrow-left"></i> Back to Recorder</button>
+      <h1><i class="fa-solid fa-paper-plane"></i> Get in Touch</h1>
+      <p>Have a question, a suggestion, or need to report an issue? Please use the form below to send us a direct message.</p>
+
+      <div style="margin: 2rem 0; text-align: center;">
+          <button id="showContactModalBtn" class="btn share" style="font-size: 1.2rem; padding: 1rem 2rem;">
+              <i class="fa-solid fa-envelope"></i> Open Contact Form
+          </button>
+      </div>
+
+      <p>We do our best to respond to all inquiries within 48 business hours.</p>
+  </section>
+
+  <dialog id="emailModal">
+    <h2><i class="fa-solid fa-envelope"></i> Send Recording</h2>
+    <label>To (email): <input id="emailTo" type="email" placeholder="example@domain.com" required /></label>
+    <button id="emailSend" class="btn share"><i class="fa-solid fa-paper-plane"></i> Send</button>
+    <button id="emailClose" class="btn cancel" formmethod="dialog">Cancel</button>
+    <div id="emailStatus"></div>
+  </dialog>
+
+  <dialog id="deleteModal">
+    <h2><i class="fa-solid fa-triangle-exclamation"></i> Confirm Deletion</h2>
+    <p>Are you sure you want to permanently delete this file? This action cannot be undone.</p>
+    <p><code id="fileToDelete"></code></p>
+    <button id="deleteConfirm" class="btn danger"><i class="fa-solid fa-trash-can"></i> Yes, Delete</button>
+    <button id="deleteCancel" class="btn" formmethod="dialog">Cancel</button>
+  </dialog>
+
+  <dialog id="forgetSessionModal">
+    <h2><i class="fa-solid fa-user-slash"></i> Forget Your Session?</h2>
+    <p>
+      This will clear the list of your recordings from this browser's memory. 
+      You won't see them here anymore.
+    </p>
+    <p style="color: var(--muted); font-size: 0.9em;">
+      Note: Your actual video files on the server will <strong>not</strong> be deleted.
+    </p>
+    <button id="forgetConfirm" class="btn danger"><i class="fa-solid fa-eraser"></i> Yes, Forget Session</button>
+    <button id="forgetCancel" class="btn" formmethod="dialog">Cancel</button>
+  </dialog>
+
+  <dialog id="mobileWarningModal">
+    <h2><i class="fa-solid fa-desktop"></i> Built for the Big Screen</h2>
+    <p>
+      Welcome to GrabScreen! Our screen recording magic relies on browser technologies
+      that are currently designed for desktop operating systems like Windows, macOS, and Linux.
+    </p>
+    <p>
+      Please visit us on a <strong>desktop or laptop computer</strong> to enjoy all the features.
+    </p>
+    <button id="mobileWarningClose" class="btn">I Understand</button>
+  </dialog>
+
+  <dialog id="contactModal">
+    <h2><i class="fa-solid fa-paper-plane"></i> Send Us a Message</h2>
+    <label>Your Email (for replies)</label>
+    <input id="contactFromEmail" type="email" placeholder="you@example.com" required />
+    
+    <label>Subject</label>
+    <input id="contactSubject" type="text" placeholder="Question about recordings" required />
+
+    <label>Message</label>
+    <textarea id="contactMessage" rows="5" placeholder="Please describe your issue or question..." required></textarea>
+    
+    <div id="contactStatus" style="margin-top: 0.5rem; min-height: 1.2em;"></div>
+
+    <button id="contactSendBtn" class="btn share"><i class="fa-solid fa-paper-plane"></i> Send Message</button>
+    <button id="contactCancelBtn" class="btn cancel" formmethod="dialog">Cancel</button>
+  </dialog>
+
+  <footer class="site-footer">
+    <p>© {{ year }} GrabScreen. All rights reserved.</p>
+    <p>
+      <a href="#" id="showPrivacyLink">Privacy Policy</a> | 
+      <a href="#" id="showContactLink">Contact</a>
+    </p>
+  </footer>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.7.1/nouislider.min.js"></script>
+<script src="{{ url_for('static', filename='js/main.js') }}" defer></script>
+<script>
+  // Theme Toggler Script (no changes)
+  const themeToggleBtn = document.getElementById('themeToggle');
+  const icon = themeToggleBtn.querySelector('i');
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const savedTheme = localStorage.getItem('theme');
+  const setTheme = theme => {
+    document.body.classList.remove('light', 'dark');
+    document.body.classList.add(theme);
+    icon.className = theme === 'dark' ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
+    localStorage.setItem('theme', theme);
+  };
+  setTheme(savedTheme || (prefersDark ? 'dark' : 'light'));
+  themeToggleBtn.onclick = () => {
+    const current = document.body.classList.contains('dark') ? 'dark' : 'light';
+    setTheme(current === 'dark' ? 'light' : 'dark');
+  };
+</script>
+</body>
+</html>
