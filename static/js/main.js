@@ -51,7 +51,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let webcamSize = { width: 0.25, height: 0.25 }; // Normalized size (0 to 1) for 25% width/height
   let webcamAspectRatio = 16 / 9; // Default to common aspect ratio, will be updated from stream
 
-  // NEW: Persistent video elements for canvas drawing - CRITICAL FIX HERE
+  // NEW: Persistent video elements for canvas drawing
   // These elements are created once and constantly play their respective streams
   let screenVideoElementForCanvas = null;
   let webcamVideoElementForCanvas = null;
@@ -171,17 +171,14 @@ document.addEventListener("DOMContentLoaded", () => {
   // Function to update webcam overlay position and size - MOVED TO GLOBAL SCOPE
   function updateWebcamOverlayStyle() {
       const container = webcamPreview.parentElement;
-      if (!container) return; // Guard against container not being ready
-      const containerRect = container.getBoundingClientRect(); // Get fresh dimensions
+      if (!container) return; 
+      const containerRect = container.getBoundingClientRect(); 
       
-      // Calculate new pixel dimensions for the overlay based on normalized state
       const newWidthPx = webcamSize.width * containerRect.width;
       const newHeightPx = (newWidthPx / webcamAspectRatio); 
 
-      // Update the webcamSize height to reflect actual aspect-ratio-constrained height
-      webcamSize.height = newHeightPx / containerRect.height;
+      webcamSize.height = newHeightPx / containerRect.height; // Update for consistency
 
-      // Calculate position in pixels, ensuring it stays within bounds
       let newX = webcamPosition.x * containerRect.width;
       let newY = webcamPosition.y * containerRect.height;
 
@@ -193,7 +190,6 @@ document.addEventListener("DOMContentLoaded", () => {
       webcamPreview.style.width = `${newWidthPx}px`;
       webcamPreview.style.height = `${newHeightPx}px`;
 
-      // Update normalized positions based on constrained pixel values
       webcamPosition.x = newX / containerRect.width;
       webcamPosition.y = newY / containerRect.height;
   }
@@ -202,14 +198,13 @@ document.addEventListener("DOMContentLoaded", () => {
   async function populateMediaDevices() {
     try {
       // Request initial permissions if not already granted to get device labels
-      // This is crucial for Chrome/Firefox to show device labels.
-      // Requesting only audio, then video, helps identify exact capabilities.
-      // Use empty constraints for initial enumerateDevices to avoid permission prompts right away
+      // These are non-blocking and may prompt the user.
+      try { await navigator.mediaDevices.getUserMedia({ audio: true, video: true }); } catch (e) { console.warn("Initial media access denied or not available:", e); }
+      
       const devices = await navigator.mediaDevices.enumerateDevices();
       audioInputSelect.innerHTML = '';
       videoInputSelect.innerHTML = '';
 
-      // Add a default "No device" option
       const defaultAudioOption = document.createElement('option');
       defaultAudioOption.value = '';
       defaultAudioOption.textContent = 'No Microphone';
@@ -220,11 +215,10 @@ document.addEventListener("DOMContentLoaded", () => {
       defaultVideoOption.textContent = 'No Camera';
       videoInputSelect.appendChild(defaultVideoOption);
 
-
       devices.forEach(device => {
         const option = document.createElement('option');
         option.value = device.deviceId;
-        option.textContent = device.label || `Unknown ${device.kind}`; // Fallback label
+        option.textContent = device.label || `Unknown ${device.kind}`;
         if (device.kind === 'audioinput') {
           audioInputSelect.appendChild(option);
         } else if (device.kind === 'videoinput') {
@@ -232,9 +226,8 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       });
 
-      // Select default devices if available
-      audioInputSelect.selectedIndex = 0; // Default to "No Microphone" or first available
-      videoInputSelect.selectedIndex = 0; // Default to "No Camera" or first available
+      audioInputSelect.selectedIndex = 0; 
+      videoInputSelect.selectedIndex = 0; 
 
     } catch (err) {
       console.error("Error enumerating devices:", err);
@@ -243,11 +236,14 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   async function getWebcamAndMicStream() {
-    if (webcamStream) { // Stop existing stream if any
+    if (webcamStream) { 
       webcamStream.getTracks().forEach(track => track.stop());
+      webcamStream = null;
     }
-    // Pause canvas video elements if streams are changing
-    if (webcamVideoElementForCanvas) webcamVideoElementForCanvas.pause();
+    if (webcamVideoElementForCanvas) {
+      webcamVideoElementForCanvas.pause();
+      webcamVideoElementForCanvas.srcObject = null;
+    }
 
     try {
       const audioDeviceId = audioInputSelect.value;
@@ -261,43 +257,32 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!constraints.video && !constraints.audio) {
           statusMsg.textContent = "No camera or microphone selected. Only screen will be recorded.";
           webcamOverlayControls.classList.add('hidden');
-          webcamPreview.srcObject = null; // Clear live preview if no stream
-          webcamStream = null;
+          webcamPreview.srcObject = null; 
           return;
       }
       
-      // Request permissions explicitly for the selected devices
       webcamStream = await navigator.mediaDevices.getUserMedia(constraints);
       
-      // Setup the hidden video element for drawing to canvas
       if (!webcamVideoElementForCanvas) {
         webcamVideoElementForCanvas = document.createElement('video');
         webcamVideoElementForCanvas.style.display = 'none';
-        webcamVideoElementForCanvas.muted = true; // Essential to avoid feedback loops
+        webcamVideoElementForCanvas.muted = true; 
         document.body.appendChild(webcamVideoElementForCanvas);
       }
       webcamVideoElementForCanvas.srcObject = webcamStream;
       webcamVideoElementForCanvas.play().catch(e => console.warn("Webcam video for canvas play error:", e));
 
-      webcamPreview.srcObject = webcamStream; // Show webcam preview to user
+      webcamPreview.srcObject = webcamStream; 
       webcamOverlayControls.classList.remove('hidden');
 
-      // Update webcam aspect ratio based on actual stream
       const videoTrack = webcamStream.getVideoTracks()[0];
       if (videoTrack) {
           const { width, height } = videoTrack.getSettings();
-          if (width && height) { // Ensure width and height are valid
-            webcamAspectRatio = width / height;
-          } else {
-            console.warn("Webcam video track settings (width/height) are undefined. Defaulting to 16:9 aspect ratio.");
-            webcamAspectRatio = 16 / 9; // Fallback
-          }
-          // Set initial size of the overlay based on container width
-          webcamSize.width = 0.25; // 25% of container width
-          // Height is derived from width to maintain aspect ratio
-          updateWebcamOverlayStyle(); // Call the now globally accessible function
+          webcamAspectRatio = (width && height) ? (width / height) : (16 / 9); // Fallback to 16:9
+          webcamSize.width = 0.25; 
+          updateWebcamOverlayStyle(); 
       } else {
-        webcamOverlayControls.classList.add('hidden'); // Hide controls if no video track
+        webcamOverlayControls.classList.add('hidden'); 
       }
 
       statusMsg.textContent = "✅ Webcam and microphone connected. Adjust overlay as needed.";
@@ -310,7 +295,10 @@ document.addEventListener("DOMContentLoaded", () => {
         webcamStream.getTracks().forEach(track => track.stop());
         webcamStream = null;
       }
-      if (webcamVideoElementForCanvas) webcamVideoElementForCanvas.pause();
+      if (webcamVideoElementForCanvas) {
+        webcamVideoElementForCanvas.pause();
+        webcamVideoElementForCanvas.srcObject = null;
+      }
     }
   }
 
@@ -323,53 +311,49 @@ document.addEventListener("DOMContentLoaded", () => {
       webcamStream.getTracks().forEach(track => track.stop());
       webcamStream = null;
     }
-    // Stop and clean up persistent video elements for canvas
     if (screenVideoElementForCanvas) {
       screenVideoElementForCanvas.pause();
       screenVideoElementForCanvas.srcObject = null;
+      // screenVideoElementForCanvas.remove(); // Can keep for reuse if preferred
     }
     if (webcamVideoElementForCanvas) {
       webcamVideoElementForCanvas.pause();
       webcamVideoElementForCanvas.srcObject = null;
+      // webcamVideoElementForCanvas.remove(); // Can keep for reuse if preferred
     }
 
-    // Stop audio context
     if (audioContext) {
       audioContext.close();
       audioContext = null;
     }
-    // Stop canvas animation frame
     if (animationFrameId) {
       cancelAnimationFrame(animationFrameId);
       animationFrameId = null;
     }
-    // Restore webcam preview to its "screen only" state (full container, not overlay)
     webcamPreview.classList.remove('webcam-overlay', 'resizing', 'is-dragging', 'hidden-overlay'); 
-    webcamPreview.srcObject = null; // Clear live preview
-    webcamPreview.style.cssText = ''; // Clear inline styles (position/size)
+    webcamPreview.srcObject = null; 
+    webcamPreview.style.cssText = ''; 
     webcamOverlayControls.classList.add('hidden');
-    isWebcamOverlayVisible = true; // Reset visibility state
-    toggleWebcamOverlayBtn.innerHTML = `<i class="fa-solid fa-camera"></i> Hide Overlay`; // Reset button text
+    isWebcamOverlayVisible = true; 
+    toggleWebcamOverlayBtn.innerHTML = `<i class="fa-solid fa-camera"></i> Hide Overlay`; 
   }
 
   // NEW: Canvas drawing and audio mixing for combined stream
   function drawFrame() {
     const ctx = recordingCanvas.getContext('2d');
     
-    // Clear canvas
     ctx.clearRect(0, 0, recordingCanvas.width, recordingCanvas.height);
 
-    // Draw screen video (from persistent element)
-    if (screenVideoElementForCanvas && screenVideoElementForCanvas.readyState >= screenVideoElementForCanvas.HAVE_CURRENT_DATA) {
+    // Draw screen video (from persistent, playing element)
+    if (screenVideoElementForCanvas && screenVideoElementForCanvas.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
       ctx.drawImage(screenVideoElementForCanvas, 0, 0, recordingCanvas.width, recordingCanvas.height);
     } else {
-        // If screen stream is not ready/available, draw a black background
         ctx.fillStyle = 'black';
         ctx.fillRect(0, 0, recordingCanvas.width, recordingCanvas.height);
     }
     
-    // Draw webcam overlay if visible and stream is active (from persistent element)
-    if (isWebcamOverlayVisible && webcamVideoElementForCanvas && webcamVideoElementForCanvas.readyState >= webcamVideoElementForCanvas.HAVE_CURRENT_DATA) {
+    // Draw webcam overlay if visible and stream is active (from persistent, playing element)
+    if (isWebcamOverlayVisible && webcamVideoElementForCanvas && webcamVideoElementForCanvas.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
       const overlayWidth = webcamSize.width * recordingCanvas.width;
       const overlayHeight = webcamSize.height * recordingCanvas.height; 
       const overlayX = webcamPosition.x * recordingCanvas.width;
@@ -381,13 +365,11 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   async function getCombinedStream() {
-      // Get screen stream dimensions
       if (!screenStream || screenStream.getVideoTracks().length === 0) {
           throw new Error("Screen stream not available for combined recording.");
       }
       const screenVideoTrack = screenStream.getVideoTracks()[0];
       const settings = screenVideoTrack.getSettings();
-      // Ensure canvas matches screen resolution for best quality
       recordingCanvas.width = settings.width || 1280; 
       recordingCanvas.height = settings.height || 720;
 
@@ -395,34 +377,50 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!screenVideoElementForCanvas) {
         screenVideoElementForCanvas = document.createElement('video');
         screenVideoElementForCanvas.style.display = 'none';
-        screenVideoElementForCanvas.muted = true; // Mute to prevent audio doubling (audio is mixed separately)
+        screenVideoElementForCanvas.muted = true; 
         document.body.appendChild(screenVideoElementForCanvas);
       }
       screenVideoElementForCanvas.srcObject = screenStream;
       screenVideoElementForCanvas.play().catch(e => console.warn("Screen video for canvas play error:", e));
 
+      // Wait for screen video to load metadata before starting canvas drawing,
+      // essential for getting correct dimensions and preventing black frames.
+      await new Promise(resolve => {
+        if (screenVideoElementForCanvas.readyState >= HTMLMediaElement.HAVE_METADATA) {
+          resolve();
+        } else {
+          screenVideoElementForCanvas.onloadedmetadata = () => resolve();
+        }
+      });
+
+      // Wait for webcam video to load metadata if active
+      if (webcamVideoElementForCanvas && webcamStream && webcamStream.getVideoTracks().length > 0) {
+        await new Promise(resolve => {
+          if (webcamVideoElementForCanvas.readyState >= HTMLMediaElement.HAVE_METADATA) {
+            resolve();
+          } else {
+            webcamVideoElementForCanvas.onloadedmetadata = () => resolve();
+          }
+        });
+      }
 
       // Start the drawing loop for the canvas
-      if (animationFrameId) cancelAnimationFrame(animationFrameId); // Stop any previous loop
+      if (animationFrameId) cancelAnimationFrame(animationFrameId); 
       animationFrameId = requestAnimationFrame(drawFrame);
 
       // Setup combined audio
       audioContext = new (window.AudioContext || window.webkitAudioContext)();
       const destination = audioContext.createMediaStreamDestination();
 
-      // Connect screen audio to destination
       if (screenStream.getAudioTracks().length > 0) {
           const screenAudioSource = audioContext.createMediaStreamSource(screenStream);
           screenAudioSource.connect(destination);
       }
-      // Connect webcam audio to destination
       if (webcamStream && webcamStream.getAudioTracks().length > 0) {
           const webcamAudioSource = audioContext.createMediaStreamSource(webcamStream);
           webcamAudioSource.connect(destination);
       }
 
-      // Get combined stream from canvas and mixed audio
-      // Set desired frame rate for canvas captureStream to 30 FPS
       const combinedVideoTrack = recordingCanvas.captureStream(30).getVideoTracks()[0]; 
       const combinedAudioTrack = destination.stream.getAudioTracks()[0];
 
@@ -430,20 +428,16 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function setupWebcamOverlayControls() {
-    // Make webcamPreview a draggable and resizable overlay
     webcamPreview.classList.add('webcam-overlay');
     
     const container = webcamPreview.parentElement;
-    // containerRect is fetched inside updateWebcamOverlayStyle
+    
+    webcamPosition = { x: 0.7, y: 0.7 }; 
+    webcamSize = { width: 0.25, height: 0.25 }; 
+    updateWebcamOverlayStyle(); 
 
-    // Initial positioning
-    webcamPosition = { x: 0.7, y: 0.7 }; // Normalized to bottom-right
-    webcamSize = { width: 0.25, height: 0.25 }; // Default to 25% width
-    updateWebcamOverlayStyle(); // Apply initial styles
-
-    // --- Dragging Logic ---
     const handleDragStart = (e) => {
-        if (e.button !== 0 || isResizing) return; // Only left click, not when resizing
+        if (e.button !== 0 || isResizing) return; 
         e.preventDefault();
         isDragging = true;
         webcamPreview.classList.add('is-dragging');
@@ -460,13 +454,11 @@ document.addEventListener("DOMContentLoaded", () => {
             let newX = e.clientX - containerRect.left - dragOffsetX;
             let newY = e.clientY - containerRect.top - dragOffsetY;
 
-            // Boundary checks (in pixels)
             newX = Math.max(0, Math.min(newX, containerRect.width - webcamPreview.offsetWidth));
             newY = Math.max(0, Math.min(newY, containerRect.height - webcamPreview.offsetHeight));
 
-            // Convert back to normalized for state
             webcamPosition.x = newX / containerRect.width;
-            webcamPosition.y = newY / containerRect.height;
+            webcamPosition.y = newY / containerRect.Iheight;
             
             webcamPreview.style.left = `${newX}px`;
             webcamPreview.style.top = `${newY}px`;
@@ -475,19 +467,16 @@ document.addEventListener("DOMContentLoaded", () => {
             const containerRect = container.getBoundingClientRect();
             const mouseX = e.clientX;
             
-            // Calculate distance from initial drag start to current mouseX
             const deltaX = mouseX - dragOffsetX; 
             
             let newWidthPx = initialWebcamWidth + deltaX;
-            newWidthPx = Math.max(50, Math.min(newWidthPx, containerRect.width * 0.7)); // Min 50px, Max 70% of container width
+            newWidthPx = Math.max(50, Math.min(newWidthPx, containerRect.width * 0.7)); 
             
-            const newHeightPx = newWidthPx / webcamAspectRatio; // Maintain aspect ratio
+            const newHeightPx = newWidthPx / webcamAspectRatio; 
 
-            // Apply new pixel dimensions directly
             webcamPreview.style.width = `${newWidthPx}px`;
             webcamPreview.style.height = `${newHeightPx}px`;
 
-            // Update normalized size for state
             webcamSize.width = newWidthPx / containerRect.width;
             webcamSize.height = newHeightPx / containerRect.height;
         }
@@ -501,27 +490,25 @@ document.addEventListener("DOMContentLoaded", () => {
         if (isResizing) {
             isResizing = false;
             webcamPreview.classList.remove('resizing');
-            // Recalculate normalized position and size after resizing for accuracy
             updateWebcamOverlayStyle();
         }
     };
 
     moveWebcamOverlayBtn.addEventListener('mousedown', handleDragStart);
     resizeWebcamOverlayBtn.addEventListener('mousedown', (e) => {
-        if (e.button !== 0 || isDragging) return; // Only left click, not when dragging
+        if (e.button !== 0 || isDragging) return; 
         e.preventDefault();
         isResizing = true;
         webcamPreview.classList.add('resizing');
         initialWebcamWidth = webcamPreview.offsetWidth;
         initialWebcamHeight = webcamPreview.offsetHeight;
-        dragOffsetX = e.clientX; // Store initial mouse X for resizing
+        dragOffsetX = e.clientX; 
     });
     
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
 
 
-    // Toggle overlay visibility
     toggleWebcamOverlayBtn.addEventListener('click', () => {
         isWebcamOverlayVisible = !isWebcamOverlayVisible;
         webcamPreview.classList.toggle('hidden-overlay', !isWebcamOverlayVisible);
@@ -530,21 +517,17 @@ document.addEventListener("DOMContentLoaded", () => {
             `<i class="fa-solid fa-eye-slash"></i> Show Overlay`;
     });
 
-    // Ensure overlay remains correctly positioned/sized on window resize
     window.addEventListener('resize', updateWebcamOverlayStyle);
   }
 
-
-  // --- Specific Recording Start Functions ---
-
   // Screen-only recording logic
   const startScreenOnlyRecording = async () => {
-    stopAllStreams(); // Ensure any previous streams are stopped
-    webcamCaptureArea.classList.add("hidden"); // Hide webcam controls
+    stopAllStreams(); 
+    webcamCaptureArea.classList.add("hidden"); 
 
     try {
       screenStream = await navigator.mediaDevices.getDisplayMedia({ video: { mediaSource: "screen" }, audio: true });
-      mediaRecorder = new MediaRecorder(screenStream, { mimeType: "video/webm" });
+      mediaRecorder = new MediaRecorder(screenStream, { mimeType: "video/webm; codecs=vp8" }); // Explicitly set VP8
       chunks = [];
       mediaRecorder.ondataavailable = e => chunks.push(e.data);
       mediaRecorder.onstop = async () => {
@@ -553,7 +536,7 @@ document.addEventListener("DOMContentLoaded", () => {
         fd.append("video", blob, "recording.webm");
         statusMsg.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Uploading & processing...`;
         
-        stopAllStreams(); // Important: Stop all tracks on both streams immediately after recording stops
+        stopAllStreams(); 
         
         const res = await apiFetch("/upload", { method: "POST", body: fd }).then(r => r.json());
         if (res.status === "ok") {
@@ -563,12 +546,11 @@ document.addEventListener("DOMContentLoaded", () => {
         } else {
           statusMsg.textContent = "❌ Upload failed: " + res.error;
         }
-        resetRecordingButtons(); // Reset buttons to initial state
+        resetRecordingButtons(); 
       };
       mediaRecorder.start();
-      screenStream.getVideoTracks()[0].onended = () => stopBtn.click(); // Auto-stop if screen share ends
+      screenStream.getVideoTracks()[0].onended = () => stopBtn.click(); 
       statusMsg.textContent = "🎬 Recording screen only…";
-      // Update UI for recording in progress
       startBtn.classList.add("hidden");
       startWebcamBtn.classList.add("hidden"); 
       stopBtn.classList.remove("hidden");
@@ -581,29 +563,23 @@ document.addEventListener("DOMContentLoaded", () => {
         console.error("An unexpected error occurred when starting recording:", err);
       }
       setTimeout(() => { statusMsg.textContent = ""; }, 5000);
-      stopAllStreams(); // Clean up if an error occurs
-      resetRecordingButtons(); // Restore buttons
+      stopAllStreams(); 
+      resetRecordingButtons(); 
     }
   };
-
 
   // Combined recording logic
   const startCombinedRecording = async () => {
       statusMsg.textContent = "⏳ Starting combined recording...";
       try {
-          // Request screen share (must be done by user click)
           screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true }); 
-          // Re-fetch webcam/mic to ensure latest device selection and correct tracks
           await getWebcamAndMicStream(); 
 
-          // Set webcamPreview's srcObject to the screen stream for user to see
-          // (webcam overlay will be positioned on top via CSS)
           webcamPreview.srcObject = screenStream; 
-          setupWebcamOverlayControls(); // Setup dragging/resizing on the live preview of screen+webcam
+          setupWebcamOverlayControls(); 
 
-          // Get the final combined stream from the canvas and mixed audio for MediaRecorder
           const combinedStream = await getCombinedStream();
-          mediaRecorder = new MediaRecorder(combinedStream, { mimeType: "video/webm" });
+          mediaRecorder = new MediaRecorder(combinedStream, { mimeType: "video/webm; codecs=vp8" }); // Explicitly set VP8
           chunks = [];
           mediaRecorder.ondataavailable = e => chunks.push(e.data);
           mediaRecorder.onstop = async () => {
@@ -612,7 +588,7 @@ document.addEventListener("DOMContentLoaded", () => {
               fd.append("video", blob, "recording.webm");
               statusMsg.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Uploading & processing...`;
               
-              stopAllStreams(); // Stop all tracks on all streams
+              stopAllStreams(); 
               
               const res = await apiFetch("/upload", { method: "POST", body: fd }).then(r => r.json());
               if (res.status === "ok") {
@@ -622,12 +598,11 @@ document.addEventListener("DOMContentLoaded", () => {
               } else {
                   statusMsg.textContent = "❌ Upload failed: " + res.error;
               }
-              resetRecordingButtons(); // Reset buttons to initial state
+              resetRecordingButtons(); 
           };
           
           mediaRecorder.start();
           statusMsg.textContent = "🎬 Recording screen + webcam…";
-          // Auto-stop if screen share ends or webcam stream ends
           screenStream.getVideoTracks()[0].onended = () => stopBtn.click();
           if (webcamStream && webcamStream.getVideoTracks().length > 0) {
             webcamStream.getVideoTracks()[0].onended = () => {
@@ -642,10 +617,9 @@ document.addEventListener("DOMContentLoaded", () => {
             };
           }
           
-          // Hide initial buttons and show recording controls
           startBtn.classList.add("hidden");
           startWebcamBtn.classList.add("hidden");
-          webcamCaptureArea.classList.remove("hidden"); // Keep visible for overlay controls
+          webcamCaptureArea.classList.remove("hidden"); 
           stopBtn.classList.remove("hidden");
           pauseBtn.classList.remove("hidden");
 
@@ -657,11 +631,10 @@ document.addEventListener("DOMContentLoaded", () => {
               console.error("Error starting combined recording:", err);
           }
           setTimeout(() => { statusMsg.textContent = ""; }, 5000);
-          stopAllStreams(); // Clean up on error
-          resetRecordingButtons(); // Reset buttons to initial state
+          stopAllStreams(); 
+          resetRecordingButtons(); 
       }
   };
-
 
   // Helper to reset recording buttons to initial state
   function resetRecordingButtons() {
@@ -670,18 +643,16 @@ document.addEventListener("DOMContentLoaded", () => {
     pauseBtn.classList.add("hidden");
     resumeBtn.classList.add("hidden");
     stopBtn.classList.add("hidden");
-    webcamCaptureArea.classList.add("hidden"); // Hide webcam setup UI
+    webcamCaptureArea.classList.add("hidden"); 
     
-    // Crucially: Remove the current listener and re-add the screen-only one
     if (startBtn.currentListener) {
         startBtn.removeEventListener("click", startBtn.currentListener);
     }
     startBtn.addEventListener("click", startScreenOnlyRecording);
-    startBtn.currentListener = startScreenOnlyRecording; // Update current listener reference
+    startBtn.currentListener = startScreenOnlyRecording; 
 
-    startBtn.textContent = "Start Recording (Screen Only)"; // Reset text
+    startBtn.textContent = "Start Recording (Screen Only)"; 
   }
-
 
   // ===================================================================
   // EVENT LISTENERS
@@ -689,43 +660,37 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // --- Initial listener setup ---
   startBtn?.addEventListener("click", startScreenOnlyRecording);
-  startBtn.currentListener = startScreenOnlyRecording; // Store the currently active listener
+  startBtn.currentListener = startScreenOnlyRecording; 
 
-
-  // --- Main Page Navigation (Isolated and Correct) ---
+  // --- Main Page Navigation ---
   $("#showPrivacyLink")?.addEventListener("click", (e) => { e.preventDefault(); showView('privacy'); });
   $("#showContactLink")?.addEventListener("click", (e) => { e.preventDefault(); showView('contact'); });
   $$(".back-btn").forEach(btn => btn.addEventListener("click", (e) => { e.preventDefault(); showView('recorder'); }));
-
-  // --- Recorder Controls ---
-  // The startBtn's listener is now dynamically managed
   
   // NEW: Start Recording with Webcam button click
   startWebcamBtn?.addEventListener("click", async () => {
-    stopAllStreams(); // Clear any previous streams
-    webcamCaptureArea.classList.remove("hidden"); // Show webcam controls
-    startBtn.classList.add("hidden"); // Hide screen-only button
-    startWebcamBtn.classList.add("hidden"); // Hide self until setup is done
+    stopAllStreams(); 
+    webcamCaptureArea.classList.remove("hidden"); 
+    startBtn.classList.add("hidden"); 
+    startWebcamBtn.classList.add("hidden"); 
 
     statusMsg.textContent = "⏳ Setting up webcam and screen share. Please allow permissions...";
-    await populateMediaDevices(); // Populate dropdowns first
-    await getWebcamAndMicStream(); // Get initial webcam/mic streams
+    await populateMediaDevices(); 
+    await getWebcamAndMicStream(); 
     
-    // Change the main start button's text and listener for combined recording
     if (startBtn.currentListener) {
         startBtn.removeEventListener("click", startBtn.currentListener);
     }
     startBtn.addEventListener("click", startCombinedRecording);
-    startBtn.currentListener = startCombinedRecording; // Update current listener reference
+    startBtn.currentListener = startCombinedRecording; 
 
     startBtn.textContent = "Start Combined Recording";
-    startBtn.classList.remove("hidden"); // Show the new "Start Combined Recording" button
+    startBtn.classList.remove("hidden"); 
   });
 
   // Device selection change listeners (for webcam mode)
   audioInputSelect.addEventListener('change', getWebcamAndMicStream);
   videoInputSelect.addEventListener('change', getWebcamAndMicStream);
-
 
   pauseBtn?.addEventListener("click", () => { mediaRecorder.pause(); statusMsg.textContent = "⏸ Paused"; pauseBtn.classList.add("hidden"); resumeBtn.classList.remove("hidden"); });
   resumeBtn?.addEventListener("click", () => { mediaRecorder.resume(); statusMsg.textContent = "🎬 Recording…"; resumeBtn.classList.add("hidden"); pauseBtn.classList.remove("hidden"); });
@@ -740,9 +705,8 @@ document.addEventListener("DOMContentLoaded", () => {
   sessionBtn?.addEventListener("click", () => { filesPanel.classList.toggle("hidden"); filesPanel.scrollIntoView({ behavior: 'smooth' }); });
   forgetBtn?.addEventListener("click", () => forgetSessionModal?.showModal());
 
-  // --- Helper to reset button state ---
   const resetButton = (btn, originalContent) => {
-    if (btn) { // Check if button element exists
+    if (btn) { 
         btn.disabled = false;
         btn.innerHTML = originalContent;
     }
@@ -758,25 +722,19 @@ document.addEventListener("DOMContentLoaded", () => {
       
       case "download-webm":
           const webmButton = button;
-          const originalWebmButtonContent = webmButton.innerHTML; // Store original content
-
-          // Disable the link visually (it's an <a> tag, but still useful for feedback)
-          // For <a> tags, the 'download' attribute handles the download.
-          // We show a spinner for a brief moment as an acknowledgment.
-          webmButton.classList.add('disabled-link'); // Add a class for styling disabled <a>
+          const originalWebmButtonContent = webmButton.innerHTML; 
+          webmButton.classList.add('disabled-link'); 
           webmButton.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Downloading...`;
 
           setTimeout(() => {
               resetButton(webmButton, originalWebmButtonContent);
-              webmButton.classList.remove('disabled-link'); // Remove disabled class
-          }, 2000); // Show spinner for 2 seconds
-
-          // IMPORTANT: Do NOT e.preventDefault() here for <a> tags, as it stops the download.
+              webmButton.classList.remove('disabled-link'); 
+          }, 2000); 
           break;
 
       case "download-mp4":
           const mp4Button = button;
-          const originalMp4ButtonContent = mp4Button.innerHTML; // Store original content
+          const originalMp4ButtonContent = mp4Button.innerHTML; 
 
           mp4Button.disabled = true;
           mp4Button.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Converting...`;
@@ -784,15 +742,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
           try {
               const downloadUrl = `/download/mp4/${currentFile}`;
-              // Make a fetch request to check server's response (for errors)
               const response = await fetch(downloadUrl, { method: 'GET' });
 
               if (response.ok) {
-                  // If OK, trigger the actual file download by redirecting the browser
                   window.location.href = downloadUrl;
                   statusMsg.textContent = `✅ MP4 conversion/download started! Check your downloads.`;
               } else {
-                  // If not OK, parse JSON error from Flask
                   const errorData = await response.json();
                   statusMsg.textContent = `❌ MP4 conversion failed: ${errorData.error || 'Unknown error'}`;
                   console.error("MP4 conversion server error:", errorData.error);
@@ -801,8 +756,8 @@ document.addEventListener("DOMContentLoaded", () => {
               console.error("MP4 conversion request failed (network/parsing error):", error);
               statusMsg.textContent = `❌ MP4 conversion request failed. Please check network.`;
           } finally {
-              resetButton(mp4Button, originalMp4ButtonContent); // Use helper to reset
-              setTimeout(() => statusMsg.textContent = '', 5000); // Clear message
+              resetButton(mp4Button, originalMp4ButtonContent); 
+              setTimeout(() => statusMsg.textContent = '', 5000); 
           }
           break;
       case "secure-link": { const r = await apiFetch(`/link/secure/${currentFile}`).then(r => r.json()); if (r.status === "ok") copy(r.url, button); break; }
@@ -880,7 +835,7 @@ document.addEventListener("DOMContentLoaded", () => {
       btn.disabled = false; btn.innerHTML = `<i class="fa-solid fa-eraser"></i> Yes, Forget Session`;
   });
 
-  // --- Contact Form Modal Logic (Updated for better styling) ---
+  // --- Contact Form Modal Logic ---
   const contactModal = $("#contactModal");
   const showContactModalBtn = $("#showContactModalBtn");
   const contactCancelBtn = $("#contactCancelBtn");
@@ -952,7 +907,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if(startBtn) {
         startBtn.disabled = true;
         startBtn.innerHTML = `<i class="fa-solid fa-desktop"></i> Desktop Only`;
-        startWebcamBtn.disabled = true; // Disable webcam button too
+        startWebcamBtn.disabled = true; 
         startWebcamBtn.innerHTML = `<i class="fa-solid fa-desktop"></i> Desktop Only`;
       }
     }
