@@ -523,6 +523,8 @@ dialog textarea:focus {
   background-color: rgba(220, 53, 69, 0.15);
 }
 
+
+
 @media (max-width: 640px) {
   body { padding: 1rem; }
   .card { padding: 4rem 1rem 1.5rem; }
