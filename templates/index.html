@@ -94,34 +94,24 @@
 
     <!-- NEW: Webcam and Canvas Display Area -->
     <div id="webcamCaptureArea" class="hidden">
-    <div class="device-selection">
-        <label for="audioInput">Microphone:</label>
-        <select id="audioInput"></select>
-        <label for="videoInput">Camera:</label>
-        <select id="videoInput"></select>
-    </div>
-    <div class="webcam-preview-container">
-        <!-- This video shows the webcam feed BEFORE recording starts -->
-        <video id="webcamPreview" autoplay muted playsinline></video>
-        <div id="webcamOverlayControls" class="hidden">
-            <button id="toggleWebcamOverlay" class="btn btn-small"><i class="fa-solid fa-camera"></i> Toggle Overlay</button>
-            <button id="moveWebcamOverlay" class="btn btn-small"><i class="fa-solid fa-arrows-up-down-left-right"></i> Move</button>
-            <button id="resizeWebcamOverlay" class="btn btn-small"><i class="fa-solid fa-expand"></i> Resize</button>
+        <div class="device-selection">
+            <label for="audioInput">Microphone:</label>
+            <select id="audioInput"></select>
+            <label for="videoInput">Camera:</label>
+            <select id="videoInput"></select>
         </div>
+        <div class="webcam-preview-container">
+            <!-- This video shows the webcam feed BEFORE recording starts -->
+            <video id="webcamPreview" autoplay muted playsinline></video>
+            <div id="webcamOverlayControls" class="hidden">
+                <button id="toggleWebcamOverlay" class="btn btn-small"><i class="fa-solid fa-camera"></i> Toggle Overlay</button>
+                <button id="moveWebcamOverlay" class="btn btn-small"><i class="fa-solid fa-arrows-up-down-left-right"></i> Move</button>
+                <button id="resizeWebcamOverlay" class="btn btn-small"><i class="fa-solid fa-expand"></i> Resize</button>
+            </div>
+        </div>
+        <!-- This canvas is the actual source for the MediaRecorder, where screen and webcam are combined -->
+        <canvas id="recordingCanvas" style="display:none;"></canvas>
     </div>
-
-    <!-- ***** NEWLY ADDED WARNING ***** -->
-    <div class="important-warning hidden" id="minimizeWarning">
-      <i class="fa-solid fa-triangle-exclamation"></i>
-      <div>
-        <strong>Important:</strong> To ensure your desktop is recorded correctly, <strong>do not minimize this browser window</strong>. Keep it open in the background while you record.
-      </div>
-    </div>
-    <!-- ***** END NEW WARNING ***** -->
-
-    <!-- This canvas is the actual source for the MediaRecorder, where screen and webcam are combined -->
-    <canvas id="recordingCanvas" style="display:none;"></canvas>
-</div>
 
     <section class="how-it-works">
       <h2>How It Works in 3 Simple Steps</h2>
