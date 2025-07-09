@@ -107,6 +107,8 @@ user_sessions = load_json(SESSIONS_FILE)
 def index():
     return render_template("index.html", year=datetime.datetime.now().year)
 
+# In app.py
+
 @app.route("/upload", methods=["POST"])
 def upload():
     video_file = request.files.get("video")
@@ -117,7 +119,16 @@ def upload():
     save_path = os.path.join(RECDIR, fname)
 
     try:
-        video_file.save(save_path)
+        # --- NEW: Memory-efficient streaming save ---
+        CHUNK_SIZE = 4096  # Process in 4KB chunks
+        with open(save_path, "wb") as f:
+            while True:
+                chunk = video_file.stream.read(CHUNK_SIZE)
+                if not chunk:
+                    break
+                f.write(chunk)
+        app.logger.info(f"Successfully saved uploaded video to {save_path} by streaming.")
+        # --- END NEW ---
     except Exception as e:
         app.logger.error(f"Failed to save uploaded video file: {e}")
         return jsonify({"status": "fail", "error": str(e)}), 500
